@@ -552,82 +552,45 @@ export interface PersonSummary {
   photoMatch: string | null;
   actedIn: number;
   directed: number;
-  /** Poster of their most recently logged credit, for the index tiles. */
-  latestPoster: string | null;
-  latestPosterUrl: string | null;
-  averageRating: number | null;
 }
 
 /**
  * Everyone credited in the diary, actors and directors merged into one list.
- * A person can hold both roles, so the two tables are unioned on name slug.
+ *
+ * A person can hold both roles, so the two tables are unioned on name slug and
+ * the credit counts summed per role. Done as a single aggregate rather than a
+ * query per person — the naive version issued 160 round-trips for 80 people.
  */
 export function getPeople(): PersonSummary[] {
-  const rows = db
-    .select({
-      slug: s.actors.slug,
-      name: s.actors.name,
-      photoPath: s.actors.photoPath,
-      photoMatch: s.actors.photoMatch,
-      actedIn: sql<number>`(SELECT count(*) FROM movie_actors WHERE actor_id = ${s.actors.id})`,
-      directed: sql<number>`0`,
-    })
-    .from(s.actors)
-    .all();
-
-  const directorRows = db
-    .select({
-      slug: s.directors.slug,
-      name: s.directors.name,
-      photoPath: s.directors.photoPath,
-      photoMatch: s.directors.photoMatch,
-      actedIn: sql<number>`0`,
-      directed: sql<number>`(SELECT count(*) FROM movie_directors WHERE director_id = ${s.directors.id})`,
-    })
-    .from(s.directors)
-    .all();
-
-  const merged = new Map<string, PersonSummary>();
-  for (const r of [...rows, ...directorRows]) {
-    const existing = merged.get(r.slug);
-    if (existing) {
-      existing.actedIn += r.actedIn;
-      existing.directed += r.directed;
-      existing.photoPath ??= r.photoPath;
-      existing.photoMatch ??= r.photoMatch;
-    } else {
-      merged.set(r.slug, { ...r, latestPoster: null, latestPosterUrl: null, averageRating: null });
-    }
-  }
-
-  for (const p of merged.values()) {
-    const agg = db
-      .select({
-        poster: s.movies.posterPath,
-        posterUrl: s.movies.posterUrl,
-        createdTime: s.movies.createdTime,
-      })
-      .from(s.movies)
-      .where(sql`${s.movies.id} IN (${creditedMovieIds(p.slug)})`)
-      .orderBy(desc(s.movies.createdTime))
-      .limit(1)
-      .get();
-    p.latestPoster = agg?.poster ?? null;
-    p.latestPosterUrl = agg?.posterUrl ?? null;
-
-    const rating = db
-      .select({ avg: sql<number | null>`avg(${s.movies.ratingValue})` })
-      .from(s.movies)
-      .where(sql`${s.movies.id} IN (${creditedMovieIds(p.slug)})`)
-      .get();
-    p.averageRating = rating?.avg ?? null;
-  }
-
-  return [...merged.values()].sort(
-    (a, b) =>
-      b.actedIn + b.directed - (a.actedIn + a.directed) ||
-      a.name.localeCompare(b.name),
-  );
+  const rows = db.all<{
+    slug: string;
+    name: string;
+    photoPath: string | null;
+    photoMatch: string | null;
+    actedIn: number;
+    directed: number;
+  }>(sql`
+    WITH base AS (
+      SELECT slug, name, photo_path, photo_match FROM actors
+      UNION ALL
+      SELECT slug, name, photo_path, photo_match FROM directors
+    )
+    SELECT
+      b.slug                                        AS slug,
+      MIN(b.name)                                   AS name,
+      MAX(b.photo_path)                             AS photoPath,
+      MAX(b.photo_match)                            AS photoMatch,
+      (SELECT count(*) FROM movie_actors ma
+         JOIN actors a ON a.id = ma.actor_id
+        WHERE a.slug = b.slug)                      AS actedIn,
+      (SELECT count(*) FROM movie_directors md
+         JOIN directors d ON d.id = md.director_id
+        WHERE d.slug = b.slug)                      AS directed
+    FROM base b
+    GROUP BY b.slug
+    ORDER BY (actedIn + directed) DESC, name ASC
+  `);
+  return rows;
 }
 
 /** Subquery: every movie id this person is credited on, in either role. */
