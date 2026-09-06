@@ -1,0 +1,119 @@
+@import "tailwindcss";
+
+/*
+  Palette: a cinema auditorium.
+  Plum-black walls, oxblood velvet seats, amber sconces on the aisle, and the
+  cool blue-white of the projected image. The two accents are semantic, not
+  decorative: amber marks ratings (house lights), rose marks cinema visits.
+*/
+@theme {
+  --color-ink: #16101a;
+  --color-ink-2: #1d1520;
+  --color-velvet: #241826;
+  --color-edge: #3a2839;
+  --color-edge-2: #4d3549;
+
+  /*
+    The text ramp is spaced by contrast, not by eye: every step clears WCAG AA
+    (4.5:1) against both --color-ink and --color-velvet, because the recessed
+    tones carry real content — section labels, coordinates, dates — not decoration.
+    paper 15.97 · dim 7.60 · faint 5.04 (on ink)
+  */
+  --color-paper: #f3ece5;
+  --color-dim: #b0a0b4;
+  --color-faint: #907f95;
+
+  /* The unfilled half of the rating meter: a visible track, well clear of the
+     amber so it never reads as a lit star. The value itself is announced in text. */
+  --color-star-off: #6a4b66;
+
+  --color-sconce: #e8b04b;
+  --color-sconce-dim: #8a6a2f;
+  --color-rose: #d4657c;
+  --color-screen: #a8c6e4;
+
+  --font-display: var(--font-fraunces), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-space-mono), ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-ink);
+  color: var(--color-paper);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  /* A faint pool of warm light near the top, like a sconce above the aisle. */
+  background-image:
+    radial-gradient(900px 480px at 18% -8%, rgba(232, 176, 75, 0.07), transparent 62%),
+    radial-gradient(760px 420px at 88% 4%, rgba(168, 198, 228, 0.05), transparent 66%);
+  background-attachment: fixed;
+}
+
+::selection {
+  background: var(--color-sconce);
+  color: var(--color-ink);
+}
+
+/* Keyboard focus is always visible, and always in the house-light amber. */
+:focus-visible {
+  outline: 2px solid var(--color-sconce);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* --- utilities ---------------------------------------------------------- */
+@utility eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-faint);
+}
+
+@utility plate {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+}
+
+@utility rule-soft {
+  border-color: color-mix(in oklab, var(--color-edge) 70%, transparent);
+}
+
+/* Poster frames: square corners, hard edges — a contact sheet, not an app. */
+@utility frame {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-velvet);
+  box-shadow: inset 0 0 0 1px rgba(243, 236, 229, 0.07);
+}
+
+/* --- motion -------------------------------------------------------------- */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.rise {
+  animation: rise 0.5s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Hide the native clear button on search inputs; we render our own. */
+input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; }
