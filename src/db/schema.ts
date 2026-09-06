@@ -69,6 +69,15 @@ export const movies = sqliteTable(
 
     /** Relative path of this record's page file inside the export. */
     notionPath: text("notion_path"),
+
+    /**
+     * Where this record came from: "notion" for rows built by the importer,
+     * "app" for entries added in the UI.
+     *
+     * The importer keys on this so the two never fight: it will not overwrite an
+     * app-created row, and it does not report one as missing from the export.
+     */
+    origin: text("origin").notNull().default("notion"),
   },
   (t) => [
     uniqueIndex("movies_slug_idx").on(t.slug),

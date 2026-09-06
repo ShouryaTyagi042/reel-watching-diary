@@ -25,15 +25,13 @@ export default function PeoplePage() {
   return (
     <>
       <header className="pt-10 sm:pt-14">
-        <div className="eyebrow">From the Notion “Casts” and “Director” databases</div>
+        <div className="eyebrow">Cast and directors</div>
         <h1 className="mt-2 font-display text-[clamp(2rem,5vw,3.25rem)] font-light leading-none text-paper">
           People
         </h1>
         <p className="mt-5 max-w-2xl text-[14px] leading-relaxed text-dim">
-          Everyone credited across the diary. Headshots come from your{" "}
-          <code className="plate text-dim">src/Actors</code> and{" "}
-          <code className="plate text-dim">src/Directors</code> folders, matched by name — anyone
-          without one is drawn with their initials rather than a stand-in face.
+          Everyone credited across the diary. Headshots are matched to people by name from your
+          assets folder — anyone without one is drawn with their initials rather than a stand-in face.
         </p>
       </header>
 

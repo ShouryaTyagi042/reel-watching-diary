@@ -45,7 +45,7 @@ export default async function PersonPage({ params }: { params: Promise<{ slug: s
             ]
               .filter(Boolean)
               .join(" · ") ||
-              "In the Notion Casts database, but no film is linked to them yet."}
+              "Credited in the diary, but no film is linked to them yet."}
           </p>
           {!photoPath && (
             <p className="mt-3 text-[12px] text-faint">

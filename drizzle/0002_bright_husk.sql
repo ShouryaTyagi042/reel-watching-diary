@@ -1,0 +1,1 @@
+ALTER TABLE `movies` ADD `origin` text DEFAULT 'notion' NOT NULL;

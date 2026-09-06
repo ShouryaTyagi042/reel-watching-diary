@@ -1,38 +1,45 @@
 # Reel — a watching diary
 
-A personal movie and TV diary that builds itself from a **Notion export**. Point
-it at your own exported "Movies and TV Shows" database and it imports the
-records, matches your poster and headshot files to them, and works out which
-cinema you were in from the GPS in the photos you took there.
+A personal diary of the films and shows you have watched, and the cinemas you
+saw them in. Add entries as you go, or bulk-load an existing collection.
 
-This repository contains the application only. The diary data — the Notion
-export, the posters, the theatre photos — is personal and is deliberately not
-committed.
+The interesting part is the cinemas. An entry records *that* you were in a
+cinema, not which one — but the photos you took there carry GPS, so venues are
+worked out by clustering those positions. A cinema arrives unnamed, as a fix on
+the earth, and you name it.
 
-## Bringing your own data
+## Two ways to get data in
 
-The importer expects two sibling folders next to this one:
+**Add an entry** — `/add` in the app. Title is the only required field.
+Artwork you attach is written into your thumbnails folder using the diary's
+naming convention (lower snake_case, e.g. `mirzapur_the_movie.jpg`), so it sits
+alongside the rest of your collection and is picked up by any later import.
+
+**Import a collection** — point the importer at an exported Notion "Movies and
+TV Shows" database and it loads the records, matches your artwork and headshots
+to them, and derives cinemas from photo GPS. Expected layout:
 
 ```
 your-folder/
-├── d/      Notion export — the "Movies and TV Shows Diary" workspace
-├── src/    Your poster thumbnails, actor and director photos
+├── d/      Exported collection (Markdown & CSV, with subpages)
+├── src/    Your artwork and headshots
 │   ├── Movies Thumbnails/
 │   ├── Actors/
 │   └── Directors/
 └── web/    This repository
 ```
 
-Export your Notion workspace as **Markdown & CSV** (with subpages) into `d/`.
-Both paths are configurable:
-
 ```bash
 npm run import -- --export ../d --assets ../src
 ```
 
+The two coexist. Entries you add are marked `origin: "app"`; the importer never
+overwrites them, never deletes them, and does not report them as missing from
+the source. Imported records are rebuilt from the source on every run.
+
 The importer only ever *reads* those folders. It copies matched images into
-`public/` and writes a SQLite file at `data/diary.db` — all of which are
-gitignored, so your diary never lands in version control.
+`public/` and writes a SQLite file at `data/diary.db` — all gitignored, so your
+diary never lands in version control.
 
 ---
 
@@ -51,7 +58,7 @@ npm run dev            # http://localhost:3000
 |---|---|
 | `npm install` | Install dependencies |
 | `npm run db:migrate` | Create/upgrade `data/diary.db` from `drizzle/*.sql` |
-| `npm run import` | Read the Notion export and populate the database |
+| `npm run import` | Load an exported collection into the database |
 | `npm run setup` | `db:migrate` then `import` |
 | `npm run db:reset` | Delete the database and re-migrate (then run `import`) |
 | `npm run verify` | Re-read the export and assert the database matches it |
@@ -71,12 +78,13 @@ npm run import -- --json          # machine-readable report
 
 ## Database schema
 
-SQLite via Drizzle ORM (`src/db/schema.ts`). Thirteen tables, keyed on Notion
-page ids so re-importing updates rows rather than duplicating them.
+SQLite via Drizzle ORM (`src/db/schema.ts`). Thirteen tables. Imported records
+keep their source page id so re-importing updates rows rather than duplicating
+them; entries added in the app get an `app_…` id and an `origin` of `"app"`.
 
 | Table | Holds |
 |---|---|
-| `movies` | One row per Notion "Movies and TV Shows" record. Both the raw and the normalised form of anything Notion stores oddly. |
+| `movies` | One row per entry, imported or added here. Keeps both the raw and the normalised form of anything stored oddly at source, plus `origin` so the importer knows which rows are its own. |
 | `genres` + `movie_genres` | The Genres database and its relation |
 | `actors` + `movie_actors` | The Casts database; `position` keeps billing order. `photo_match` / `photo_source` record which headshot was attached and how. |
 | `directors` + `movie_directors` | The Director database, same headshot columns |
@@ -86,7 +94,7 @@ page ids so re-importing updates rows rather than duplicating them.
 | `cinema_visits` | One row per record with `Theatre = Yes` |
 | `import_issues` + `import_runs` | The import audit, shown on the **Data** page |
 
-Where a Notion property has no clean relational equivalent, both forms are kept:
+Where a source property has no clean relational equivalent, both forms are kept:
 
 - **Rating** — `rating_raw` keeps `★★★½✰` exactly as written; `rating_value`
   is the 0–5 number derived from it (★ = 1, ½ = 0.5, ✰ = 0). Unrated stays
@@ -100,7 +108,7 @@ Where a Notion property has no clean relational equivalent, both forms are kept:
 
 ---
 
-## How Notion fields were mapped
+## How an imported collection maps to the schema
 
 **Movies and TV Shows** (39 records)
 
@@ -185,8 +193,8 @@ alongside, and as a **Credits** row on every movie page.
 
 ## Cinemas
 
-**The Notion tracker has no cinema names.** It records a single `Theatre`
-yes/no checkbox — that is the whole of the cinema data in the export.
+**Nothing in the data carries a cinema name.** An entry records only *that* it
+was watched in a cinema — that is the whole of the cinema data.
 
 What it *does* have is photos. The images attached as "Movie Shots" during
 theatre visits carry GPS EXIF, and that is the only evidence in the export that
@@ -220,14 +228,14 @@ rather than resolving them silently:
 | Cover is a remote URL with no local asset | The Notion URL is stored and rendered. Nothing is downloaded. |
 | No byte-identical curated thumbnail | The export's own cover file is used. |
 | Thumbnail matching no record | Left unassigned and reported. No movie is invented for it. |
-| Geotagged photos on a record whose `Theatre` box is **No** | **The Notion value wins.** No cinema visit is created. Tick Theatre in Notion and re-import if it should be one. |
+| Geotagged photos on a record not marked as watched in a cinema | **The recorded value wins.** No cinema visit is created; the conflict is reported instead. |
 | `Theatre = Yes` but no geotagged photo | Counted as a visit; venue left unknown rather than guessed. |
 | Trailing whitespace in a title | Preserved in `title_raw`, trimmed for display. |
 | Genres with zero movies | Imported and kept; hidden from the dashboard breakdown. |
 | People in the Casts database with no film linked | Imported as-is, shown under "No film attached" on /people. |
 | Headshot filename typo | Attached as a near-miss and reported for checking. |
 | Headshot matching nobody | Left unassigned and reported. |
-| Duplicate titles / missing page files | Kept distinct by Notion page id; reported. |
+| Duplicate titles / missing page files | Kept distinct by record id; reported. |
 
 Nothing is deleted, merged, re-dated or re-rated.
 
@@ -243,12 +251,14 @@ src/
 │   ├── movies/[slug]/        Movie detail
 │   ├── cinemas/              Cinema list + [slug] detail
 │   ├── people/               Cast & directors index + [slug] detail
+│   ├── add/                  Add an entry
+│   └── api/movies/           POST create entry, POST [slug]/poster upload
 │   ├── quotes/               Saved lines
 │   ├── data-health/          The import audit
 │   └── api/venues/[id]/      PATCH — name a cinema
 ├── components/     Presentational components
 ├── db/
-│   ├── schema.ts             The schema, annotated against Notion
+│   ├── schema.ts             The schema, annotated against the source format
 │   ├── client.ts             Connection for the app (server-only)
 │   └── connect.ts            Connection for the CLI scripts
 └── lib/
@@ -263,9 +273,12 @@ scripts/
 └── verify.ts       Assert the database matches the export
 ```
 
-Pages never touch SQL; `src/lib/queries.ts` is the only module that does. The
-importer never imports from `queries.ts`, so the read and write paths stay
-independent.
+Pages never touch SQL: `queries.ts` owns every read and `mutations.ts` every
+write. The importer shares neither, so the three paths stay independent.
+
+`thumbnail-name.ts` is deliberately dependency-free — the server uses it to name
+an uploaded file and the client uses it to show where that file will land, from
+one implementation, so the two can never drift.
 
 ### Accessibility
 

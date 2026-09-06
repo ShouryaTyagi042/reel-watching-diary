@@ -15,7 +15,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import exifr from "exifr";
 import { openDb } from "../src/db/connect";
 import * as s from "../src/db/schema";
@@ -250,7 +250,7 @@ function ensureActor(name: string, map: Map<string, string>): string {
   db.insert(s.actors).values({ id, name, slug, ...photo })
     .onConflictDoUpdate({ target: s.actors.id, set: { name, ...photo } }).run();
   map.set(slug, id);
-  report("info", "relation-only-record", name, "Actor referenced by a movie but absent from the Casts CSV — created from the relation.");
+  report("info", "relation-only-record", name, "Actor referenced by a title but absent from the people list — created from the credit.");
   return id;
 }
 
@@ -263,7 +263,7 @@ function ensureDirector(name: string, map: Map<string, string>): string {
   db.insert(s.directors).values({ id, name, slug, ...photo })
     .onConflictDoUpdate({ target: s.directors.id, set: { name, ...photo } }).run();
   map.set(slug, id);
-  report("info", "relation-only-record", name, "Director referenced by a movie but absent from the Director CSV — created from the relation.");
+  report("info", "relation-only-record", name, "Director referenced by a title but absent from the people list — created from the credit.");
   return id;
 }
 
@@ -275,7 +275,7 @@ function ensureGenre(name: string, map: Map<string, string>): string {
   db.insert(s.genres).values({ id, name, slug })
     .onConflictDoUpdate({ target: s.genres.id, set: { name } }).run();
   map.set(slug, id);
-  report("info", "relation-only-record", name, "Genre referenced by a movie but absent from the Genres CSV — created from the relation.");
+  report("info", "relation-only-record", name, "Genre referenced by a title but absent from the genre list — created from the relation.");
   return id;
 }
 
@@ -307,7 +307,7 @@ function resolvePoster(title: string, slug: string, coverCell: string): PosterRe
     }
     stats.postersExternalUrlOnly++;
     report("warning", "poster-external-only", title,
-      `Notion cover is a remote URL and no local asset matches. Using the URL from the export; nothing was downloaded.`);
+      `Artwork is a remote URL and no local file matches. Using that URL; nothing was downloaded.`);
     return { coverRaw: raw, coverKind: "external", posterPath: null, posterUrl: raw, posterMatch: null, posterSource: null };
   }
 
@@ -323,7 +323,7 @@ function resolvePoster(title: string, slug: string, coverCell: string): PosterRe
     ];
     const abs = candidates.find((c) => fs.existsSync(c));
     if (!abs) {
-      report("error", "poster-file-missing", title, `Cover references "${rel}" but no such file exists in the export.`);
+      report("error", "poster-file-missing", title, `Artwork references "${rel}" but no such file exists.`);
       stats.moviesWithoutPoster++;
       return { coverRaw: raw, coverKind: "local", posterPath: null, posterUrl: null, posterMatch: null, posterSource: null };
     }
@@ -356,7 +356,7 @@ function resolvePoster(title: string, slug: string, coverCell: string): PosterRe
   if (byslug) {
     usedThumbs.add(byslug.absPath);
     stats.postersBySlug++;
-    report("info", "poster-slug-match", title, `No Notion cover; matched "${byslug.fileName}" by filename.`);
+    report("info", "poster-slug-match", title, `No artwork reference on the record; matched "${byslug.fileName}" by filename.`);
     return {
       coverRaw: null, coverKind: null,
       posterPath: `/posters/${copyAsset(byslug.absPath, path.join(PUB, "posters"), slug)}`,
@@ -365,7 +365,7 @@ function resolvePoster(title: string, slug: string, coverCell: string): PosterRe
   }
 
   stats.moviesWithoutPoster++;
-  report("warning", "poster-missing", title, "No cover in Notion and no confident thumbnail match. Rendered with a placeholder.");
+  report("warning", "poster-missing", title, "No artwork reference and no confident thumbnail match. Rendered with a placeholder.");
   return { coverRaw: null, coverKind: null, posterPath: null, posterUrl: null, posterMatch: null, posterSource: null };
 }
 
@@ -430,14 +430,14 @@ async function run() {
     const id = page?.id ?? synthId("movie", slug);
     if (!page) {
       report("warning", "page-file-missing", title,
-        "No per-record markdown page in the export; using a synthetic id derived from the title.");
+        "No per-record page file alongside the data; using a synthetic id derived from the title.");
     }
 
     // Distinct Notion records that collapse to the same slug must stay distinct.
     if (seenIds.has(id)) {
       stats.moviesSkipped++;
       stats.duplicateTitles++;
-      report("error", "duplicate-record", title, `A second CSV row resolves to the same Notion page id (${id}) — skipped to avoid overwriting.`);
+      report("error", "duplicate-record", title, `A second row resolves to the same record id (${id}) — skipped to avoid overwriting.`);
       continue;
     }
     seenIds.add(id);
@@ -450,6 +450,19 @@ async function run() {
       slug = unique;
     }
     seenSlugs.set(slug, id);
+
+    // A record arriving from the source that matches an entry already added by
+    // hand is almost certainly the same film twice. Both are kept — merging them
+    // would risk losing a rating or a date — but the collision is reported.
+    const appTwin = db
+      .select({ title: s.movies.title, slug: s.movies.slug })
+      .from(s.movies)
+      .where(and(eq(s.movies.origin, "app"), eq(s.movies.slug, slugify(title))))
+      .get();
+    if (appTwin && appTwin.slug !== slug) {
+      report("warning", "possible-duplicate", title,
+        `An entry added in the app ("${appTwin.title}") looks like the same title. Both were kept — delete whichever is redundant.`);
+    }
 
     const year = row["Year"] ? Number(row["Year"]) : null;
     if (row["Year"] && !Number.isFinite(year)) {
@@ -481,6 +494,20 @@ async function run() {
       posterMatch: poster.posterMatch, posterSource: poster.posterSource,
       notionPath: page?.rel ?? null,
     };
+
+    // An entry created in the app is the user's own record, not a projection of
+    // the export. Never overwrite one.
+    const existing = db
+      .select({ origin: s.movies.origin, title: s.movies.title })
+      .from(s.movies)
+      .where(eq(s.movies.id, id))
+      .get();
+    if (existing?.origin === "app") {
+      stats.moviesSkipped++;
+      report("info", "app-record-preserved", title,
+        "This entry was created in the app, so the importer left it untouched.");
+      continue;
+    }
 
     db.insert(s.movies).values(values)
       .onConflictDoUpdate({ target: s.movies.id, set: { ...values, id: undefined as never } })
@@ -517,7 +544,7 @@ async function run() {
       ];
       const abs = candidates.find((c) => fs.existsSync(c));
       if (!abs) {
-        report("error", "shot-file-missing", title, `Movie Shots references "${rel}" but no such file exists in the export.`);
+        report("error", "shot-file-missing", title, `A photo references "${rel}" but no such file exists.`);
         return;
       }
       if (!isImage(abs)) {
@@ -551,7 +578,7 @@ async function run() {
   for (const sh of allShots) {
     if (!sh.theatre && sh.lat !== null && sh.lng !== null) {
       report("info", "theatre-flag-conflict", sh.movieTitle,
-        `Photo "${sh.sourceName}" carries GPS (${formatCoords(sh.lat, sh.lng!)}) but the record's Theatre checkbox is No. The Notion value was kept; no cinema visit was created.`);
+        `Photo "${sh.sourceName}" carries GPS (${formatCoords(sh.lat, sh.lng!)}) but the record is not marked as watched in a cinema. The recorded value was kept; no cinema visit was created.`);
     }
     if (sh.theatre && (sh.lat === null || sh.lng === null)) {
       report("info", "shot-without-gps", sh.movieTitle,
@@ -612,7 +639,11 @@ async function run() {
   }
 
   /* ---- one cinema visit per theatre-flagged record ---- */
-  db.delete(s.cinemaVisits).run();
+  // Rebuild only the visits this importer owns. Visits belonging to entries added
+  // in the app are the user's own records and must survive a re-import.
+  db.delete(s.cinemaVisits)
+    .where(sql`${s.cinemaVisits.movieId} IN (SELECT id FROM movies WHERE origin = 'notion')`)
+    .run();
   for (const m of theatreMovies) {
     const shots = allShots.filter((sh) => sh.movieId === m.id);
     const dated = shots.filter((sh) => sh.capturedAt).sort((a, b) => a.capturedAt!.localeCompare(b.capturedAt!));
@@ -633,7 +664,7 @@ async function run() {
     stats.cinemaVisits++;
     if (venueId) stats.cinemaVisitsWithVenue++;
     else report("info", "visit-without-venue", m.title,
-      "Watched in a cinema (Theatre = Yes) but there is no geotagged photo, so the venue is unknown. Grouped under “Cinema not identified”.");
+      "Watched in a cinema but there is no geotagged photo, so the venue is unknown. Grouped under “Cinema not identified”.");
   }
 
   /* ---- quotes ---- */
@@ -650,7 +681,7 @@ async function run() {
     if (!movieId && refs[0]) movieId = movieIdByTitleSlug.get(slugify(refs[0].name)) ?? null;
     if (!movieId) {
       report("warning", "orphan-quote", text.slice(0, 60),
-        `Quote does not resolve to any movie record${refs[0] ? ` (referenced "${refs[0].name}")` : ""}. Stored without a movie link.`);
+        `This line does not resolve to any entry${refs[0] ? ` (referenced "${refs[0].name}")` : ""}. Stored without a link.`);
     }
     const id = synthId("quote", text);
     const values = {
@@ -666,11 +697,17 @@ async function run() {
   }
 
   /* ---- thumbnails that matched nothing ---- */
+  // A thumbnail whose name matches an entry added in the app is accounted for —
+  // that entry owns it, the importer simply never saw the record.
+  const appSlugs = new Set(
+    (db.select({ slug: s.movies.slug }).from(s.movies).where(eq(s.movies.origin, "app")).all() as { slug: string }[])
+      .map((r) => r.slug),
+  );
   for (const t of thumbs) {
-    if (usedThumbs.has(t.absPath)) continue;
+    if (usedThumbs.has(t.absPath) || appSlugs.has(t.slug)) continue;
     stats.thumbnailsUnmatched++;
     report("warning", "thumbnail-unmatched", t.fileName,
-      "Thumbnail in src/Movies Thumbnails does not correspond to any record in the Notion export. Left unassigned rather than guessed at.");
+      "This thumbnail does not correspond to any entry in the diary. Left unassigned rather than guessed at.");
   }
 
   /* ---- headshots that matched nobody ---- */
@@ -682,17 +719,23 @@ async function run() {
       if (usedPeoplePhotos.has(p.absPath)) continue;
       stats.peoplePhotosUnmatched++;
       report("warning", "person-photo-unmatched", p.fileName,
-        `Headshot in ${dir} matches no ${role} in the Notion export. Left unassigned rather than attached to the wrong person.`);
+        `Headshot in ${dir} matches no ${role} in the diary. Left unassigned rather than attached to the wrong person.`);
     }
   }
 
   /* ---- records removed from the export since the last import ---- */
   for (const id of existingMovieIds) {
-    if (!importedIds.has(id)) {
-      const row = db.select({ title: s.movies.title }).from(s.movies).where(eq(s.movies.id, id)).get();
-      report("info", "stale-record", row?.title ?? id,
-        "Present in the database but not in this export. Left in place — the importer never deletes movie records.");
-    }
+    if (importedIds.has(id)) continue;
+    const row = db
+      .select({ title: s.movies.title, origin: s.movies.origin })
+      .from(s.movies)
+      .where(eq(s.movies.id, id))
+      .get();
+    // Entries added in the app are expected to be absent from the source; only
+    // previously-imported records going missing is worth reporting.
+    if (row?.origin === "app") continue;
+    report("info", "stale-record", row?.title ?? id,
+      "Present in the database but not in this source. Left in place — the importer never deletes records.");
   }
 
   /* ---- persist the report ---- */

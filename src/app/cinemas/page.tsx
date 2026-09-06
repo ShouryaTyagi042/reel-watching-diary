@@ -24,10 +24,9 @@ export default function CinemasPage() {
           Cinemas
         </h1>
         <p className="mt-5 max-w-2xl text-[14px] leading-relaxed text-dim">
-          The Notion tracker records only whether something was watched in a cinema — it never held a
-          venue name. Each cinema below was placed from the GPS in the photos taken during the visit,
-          which is the only evidence in the export that tells one cinema from another. Names are yours
-          to fill in; the importer never overwrites them.
+          An entry records that you watched something in a cinema, but not which one. Each cinema
+          below was placed from the GPS in the photos taken during the visit — that position is what
+          tells one cinema from another. Names are yours to fill in, and they are never overwritten.
         </p>
       </header>
 
@@ -42,8 +41,8 @@ export default function CinemasPage() {
         <div className="py-24 text-center">
           <h2 className="font-display text-2xl text-paper">No cinema visits yet</h2>
           <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-dim">
-            Nothing in the export has the Theatre box ticked. Tick it in Notion, attach a photo from
-            the screening, and re-run the import to see the cinema appear here.
+            No entry is marked as watched in a cinema yet. Mark one, attach a photo from the
+            screening, and the cinema appears here.
           </p>
         </div>
       ) : (
@@ -121,9 +120,9 @@ export default function CinemasPage() {
                 <h2 className="font-display text-2xl leading-none text-paper">Cinema not identified</h2>
               </div>
               <p className="mb-7 max-w-2xl text-[14px] leading-relaxed text-dim">
-                These were watched in a cinema — the Theatre box is ticked in Notion — but no
-                geotagged photo is attached, so there is nothing in the export to say which cinema it
-                was. They are counted as visits and left unplaced rather than guessed at.
+                These are marked as watched in a cinema, but no geotagged photo is attached — so
+                there is nothing to say which cinema it was. They are counted as visits and left
+                unplaced rather than guessed at.
               </p>
               <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
                 {unplaced.map((m, i) => (

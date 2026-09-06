@@ -5,6 +5,7 @@ import { Poster } from "@/components/Poster";
 import { Stars } from "@/components/Stars";
 import { CoordPlate, MapLink } from "@/components/CoordPlate";
 import { PersonChip } from "@/components/Avatar";
+import { ThumbnailUpload } from "@/components/ThumbnailUpload";
 import { getMovieBySlug } from "@/lib/queries";
 import { formatDate, formatDateTime } from "@/lib/format";
 
@@ -40,11 +41,15 @@ export default async function MoviePage({ params }: { params: Promise<{ slug: st
             priority
             sizes="(max-width: 640px) 160px, 260px"
           />
-          {movie.posterSource && (
-            <p className="plate mt-2 truncate text-[10px] text-faint" title={movie.posterSource}>
-              {movie.posterSource}
-            </p>
-          )}
+          <div className="mt-4">
+            <ThumbnailUpload
+              slug={movie.slug}
+              title={movie.title}
+              currentPoster={movie.posterPath ?? movie.posterUrl}
+              currentSource={movie.posterSource}
+              compact
+            />
+          </div>
         </div>
 
         <div className="min-w-0">
@@ -58,7 +63,7 @@ export default async function MoviePage({ params }: { params: Promise<{ slug: st
           <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3">
             <Stars value={movie.ratingValue} raw={movie.ratingRaw} size="md" />
             {movie.ratingRaw && (
-              <span className="plate text-[11px] text-faint" title="As written in Notion">
+              <span className="plate text-[11px] text-faint" title="As recorded">
                 {movie.ratingRaw}
               </span>
             )}
@@ -81,7 +86,7 @@ export default async function MoviePage({ params }: { params: Promise<{ slug: st
 
           <dl className="mt-8 grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
             <Field label="Released">{movie.year ?? <Missing />}</Field>
-            <Field label="Logged" hint="From the Notion “Created time” property">
+            <Field label="Logged" hint="When this entry was added to the diary">
               {logged ?? <Missing />}
             </Field>
             <Field label="Status">{movie.status ?? <Missing />}</Field>
@@ -135,14 +140,14 @@ export default async function MoviePage({ params }: { params: Promise<{ slug: st
                   <span className="text-faint">
                     ({visit.visitedAtSource === "photo-exif"
                       ? "from the timestamp on a photo taken during the screening"
-                      : "from the Notion entry’s created time — no photo to date it more precisely"})
+                      : "from the entry’s own date — no photo to place it more precisely"})
                   </span>
                 </p>
               )}
               {!visit?.venueSlug && (
                 <p className="mt-3 text-faint">
-                  The Notion export only records that this was watched in a cinema, not which one.
-                  No geotagged photo is attached to this entry, so the venue is unknown.
+                  This entry records that it was watched in a cinema, but not which one. No
+                  geotagged photo is attached, so the venue is unknown.
                 </p>
               )}
             </div>
@@ -241,22 +246,30 @@ export default async function MoviePage({ params }: { params: Promise<{ slug: st
       {/* ---- Provenance ---- */}
       <details className="mt-16 border border-edge/60 bg-velvet/20">
         <summary className="cursor-pointer px-5 py-4 text-[13px] text-dim transition-colors hover:text-paper">
-          Where this record came from
+          Record details
         </summary>
         <dl className="grid gap-x-8 gap-y-3 border-t border-edge/60 px-5 py-5 sm:grid-cols-2">
-          <Field label="Notion page id"><code className="plate text-[11px]">{movie.id}</code></Field>
-          {movie.notionPath && (
-            <Field label="Export path"><code className="plate text-[11px] break-all">{movie.notionPath}</code></Field>
-          )}
-          <Field label="Cover in Notion">
-            <code className="plate text-[11px] break-all">{movie.coverRaw ?? "—"}</code>
+          <Field label="Record id"><code className="plate text-[11px]">{movie.id}</code></Field>
+          <Field label="Added">
+            {movie.origin === "app" ? "Created in the app" : "Loaded by the importer"}
           </Field>
-          <Field label="Poster matched by">
+          {movie.notionPath && (
+            <Field label="Source file">
+              <code className="plate text-[11px] break-all">{movie.notionPath}</code>
+            </Field>
+          )}
+          {movie.coverRaw && (
+            <Field label="Original artwork reference">
+              <code className="plate text-[11px] break-all">{movie.coverRaw}</code>
+            </Field>
+          )}
+          <Field label="Artwork matched by">
             {movie.posterMatch
-              ? { "content-hash": "identical bytes in src/Movies Thumbnails",
-                  "export-cover": "the export’s own cover file",
-                  slug: "filename match" }[movie.posterMatch] ?? movie.posterMatch
-              : "not matched — no local asset"}
+              ? { "content-hash": "identical bytes in your thumbnails folder",
+                  "export-cover": "the artwork shipped alongside the record",
+                  slug: "filename match",
+                  uploaded: "uploaded here" }[movie.posterMatch] ?? movie.posterMatch
+              : "not matched — no local artwork"}
           </Field>
           <Field label="Rating as stored"><code className="plate text-[11px]">{movie.ratingRaw ?? "—"}</code></Field>
           <Field label="Title as stored"><code className="plate text-[11px]">“{movie.titleRaw}”</code></Field>

@@ -6,9 +6,9 @@ import { useState } from "react";
 /**
  * Naming a cinema.
  *
- * The import can place a cinema but not name it — the Notion tracker never held
- * a name. This is the one field the diary asks its owner to fill in, and it
- * survives re-imports.
+ * A cinema can be placed from photo GPS but not named — nothing in the data
+ * carries a name. This is the one field the diary asks its owner to fill in, and
+ * it survives re-imports.
  */
 export function VenueNameForm({ id, name }: { id: string; name: string | null }) {
   const router = useRouter();

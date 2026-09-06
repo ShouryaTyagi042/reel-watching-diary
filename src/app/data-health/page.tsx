@@ -15,7 +15,7 @@ const GROUPS: { title: string; keys: [string, string][] }[] = [
   {
     title: "Records",
     keys: [
-      ["moviesInExport", "Movie rows in the export"],
+      ["moviesInExport", "Records in the source"],
       ["moviesInserted", "Inserted"],
       ["moviesUpdated", "Updated"],
       ["moviesSkipped", "Skipped"],
@@ -73,9 +73,9 @@ export default function DataHealthPage() {
           What the import found
         </h1>
         <p className="mt-5 max-w-2xl text-[14px] leading-relaxed text-dim">
-          Every record in the Notion export is accounted for here — what came through cleanly, what
-          was ambiguous, and what was deliberately left alone rather than guessed at. Nothing in the
-          export is discarded; anything that could not be resolved is listed below.
+          Every imported record is accounted for here — what came through cleanly, what was
+          ambiguous, and what was deliberately left alone rather than guessed at. Nothing is
+          discarded; anything that could not be resolved is listed below.
         </p>
         {runAt && (
           <p className="plate mt-4 text-[11px] text-faint">
@@ -148,8 +148,8 @@ export default function DataHealthPage() {
       <section className="mt-16 border border-edge/60 bg-velvet/20 p-6">
         <h2 className="font-display text-xl text-paper">Re-running the import</h2>
         <p className="mt-3 max-w-2xl text-[13px] leading-relaxed text-dim">
-          The importer is keyed on Notion page ids and upserts every row, so it can be run as often as
-          you like without duplicating anything. Update the export, then:
+          The importer is keyed on stable record ids and upserts every row, so it can be run as often
+          as you like without duplicating anything. Entries you add here are never touched by it.
         </p>
         <pre className="mt-4 overflow-x-auto border border-edge bg-ink px-4 py-3 plate text-screen">npm run import</pre>
       </section>

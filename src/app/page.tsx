@@ -208,8 +208,8 @@ export default function DiaryPage() {
           </div>
         ) : (
           <p className="text-sm text-dim">
-            No cinema visits have a position yet. The Notion export records only a Theatre yes/no
-            checkbox — venues are worked out from the GPS in the photos attached to an entry.
+            No cinema visits have a position yet. Venues are worked out from the GPS in the photos
+            attached to an entry — add a photo taken at the screening and the cinema appears here.
           </p>
         )}
       </Section>

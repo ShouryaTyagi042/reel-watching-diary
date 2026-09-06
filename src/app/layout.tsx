@@ -29,7 +29,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: { default: "Reel — a watching diary", template: "%s · Reel" },
   description:
-    "A personal diary of films and shows watched, imported from Notion, with the cinemas they were seen in.",
+    "A personal diary of the films and shows you have watched, and the cinemas you saw them in.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -56,7 +56,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <footer className="border-t border-edge/60">
           <div className="mx-auto flex max-w-[1400px] flex-col gap-2 px-4 py-8 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-10">
             <p className="plate text-[11px] text-faint">
-              Imported from the Notion export “Movies and TV Shows Diary”.
+              A record of what you watched, and where.
             </p>
             <Link href="/data-health" className="plate text-[11px] text-faint transition-colors hover:text-sconce">
               What the import found →

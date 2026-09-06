@@ -6,7 +6,7 @@ export default function NotFound() {
       <div className="eyebrow">404</div>
       <h1 className="mt-3 font-display text-3xl text-paper">Nobody by that name</h1>
       <p className="mt-4 text-sm leading-relaxed text-dim">
-        People come from the Casts and Director databases in the Notion export.
+        People are created from the credits on your entries.
       </p>
       <Link
         href="/people"

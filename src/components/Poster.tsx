@@ -3,10 +3,10 @@ import Image from "next/image";
 /**
  * A poster in its frame.
  *
- * Posters come from the user's own `src/Movies Thumbnails`, copied into
- * /public during import. Two records have only a remote Notion cover URL — those
- * render from that URL. When neither exists we draw a typographic placeholder
- * rather than borrow someone else's art.
+ * Posters come from the user's own thumbnails folder, copied into /public.
+ * A record may instead carry a remote artwork URL, in which case it renders from
+ * that. When neither exists we draw a typographic placeholder rather than borrow
+ * someone else's art.
  */
 export function Poster({
   title,

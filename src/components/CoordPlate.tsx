@@ -4,10 +4,10 @@ import { coordText, mapUrl } from "@/lib/format";
 /**
  * The coordinate plate — this app's signature device.
  *
- * The Notion tracker records only "Theatre: Yes/No"; it never held a cinema
- * name. What it does hold, in the EXIF of the photos taken during a visit, is a
- * position. So a cinema here is shown as what it actually is in the data: a
- * fix on the earth, read like an instrument, waiting for a name.
+ * An entry records that you were in a cinema, not which one. What it does hold,
+ * in the EXIF of the photos taken during the visit, is a position. So a cinema
+ * is shown as what it actually is in the data: a fix on the earth, read like an
+ * instrument, waiting for a name.
  */
 export function CoordPlate({
   lat,

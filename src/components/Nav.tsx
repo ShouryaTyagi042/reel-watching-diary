@@ -11,6 +11,7 @@ const LINKS = [
   { href: "/people", label: "People" },
   { href: "/quotes", label: "Lines" },
   { href: "/data-health", label: "Data" },
+  { href: "/add", label: "Add" },
 ];
 
 export function Nav() {

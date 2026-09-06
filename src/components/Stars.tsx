@@ -1,9 +1,9 @@
 import { starParts } from "@/lib/format";
 
 /**
- * Rating meter. Rendered in the same notation the Notion tracker uses —
- * filled stars, an optional half, and hollow stars for the remainder — so the
- * app shows the rating the way it was written, not a reinterpretation of it.
+ * Rating meter. Rendered in the diary's own notation — filled stars, an optional
+ * half, and hollow stars for the remainder — so a rating is shown the way it was
+ * written, not a reinterpretation of it.
  */
 export function Stars({
   value,

@@ -11,7 +11,7 @@ export default function QuotesPage() {
   return (
     <>
       <header className="pt-10 sm:pt-14">
-        <div className="eyebrow">From the Notion “Quotes” database</div>
+        <div className="eyebrow">Kept from what you have watched</div>
         <h1 className="mt-2 font-display text-[clamp(2rem,5vw,3.25rem)] font-light leading-none text-paper">
           Lines worth keeping
         </h1>
@@ -21,7 +21,7 @@ export default function QuotesPage() {
         <div className="py-24 text-center">
           <h2 className="font-display text-2xl text-paper">No lines saved yet</h2>
           <p className="mt-3 text-sm text-dim">
-            Add quotes to the Notion tracker and re-run the import to see them here.
+            Lines saved against an entry show up here.
           </p>
         </div>
       ) : (
