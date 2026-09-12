@@ -37,6 +37,13 @@ function findFile(dir: string, re: RegExp) {
 }
 
 const { sqlite } = openDb();
+
+/*
+ * Entries added in the app are legitimately absent from the source, so every
+ * comparison below is scoped to imported rows. Without this the whole suite
+ * fails the moment somebody adds a film by hand.
+ */
+const IMPORTED = "origin = 'notion'";
 const all = <T>(q: string, ...p: unknown[]) => sqlite.prepare(q).all(...(p as [])) as T[];
 const one = <T>(q: string, ...p: unknown[]) => sqlite.prepare(q).get(...(p as [])) as T;
 
@@ -46,15 +53,16 @@ const genreRows = csvToObjects(fs.readFileSync(findFile(DB_DIR, /^Genres .*_all\
 const castRows = csvToObjects(fs.readFileSync(findFile(DB_DIR, /^Casts .*_all\.csv$/), "utf8"));
 
 console.log("\n── Counts ────────────────────────────────────────────");
-const dbMovies = one<{ n: number }>("SELECT count(*) n FROM movies").n;
-check(`movies: ${dbMovies} rows = ${movieRows.length} in the export`, dbMovies === movieRows.length,
-  `database has ${dbMovies}, export has ${movieRows.length}`);
+const dbMovies = one<{ n: number }>(`SELECT count(*) n FROM movies WHERE ${IMPORTED}`).n;
+const appMovies = one<{ n: number }>("SELECT count(*) n FROM movies WHERE origin = 'app'").n;
+check(`imported movies: ${dbMovies} = ${movieRows.length} in the export` + (appMovies ? `  (plus ${appMovies} added in the app)` : ""),
+  dbMovies === movieRows.length, `database has ${dbMovies}, export has ${movieRows.length}`);
 check(`quotes: ${quoteRows.length} imported`, one<{ n: number }>("SELECT count(*) n FROM quotes").n === quoteRows.length);
 check(`genres: ${genreRows.length} imported`, one<{ n: number }>("SELECT count(*) n FROM genres").n >= genreRows.length);
 check(`actors: ${castRows.length} imported`, one<{ n: number }>("SELECT count(*) n FROM actors").n >= castRows.length);
 
 console.log("\n── Every title present, once ─────────────────────────");
-const dbTitles = new Map(all<{ title: string; id: string }>("SELECT title, id FROM movies").map((r) => [r.title, r.id]));
+const dbTitles = new Map(all<{ title: string; id: string }>(`SELECT title, id FROM movies WHERE ${IMPORTED}`).map((r) => [r.title, r.id]));
 const missing = movieRows.map((r) => r["Title"].trim()).filter((t) => t && !dbTitles.has(t));
 check("every export title has a row", missing.length === 0, missing.join(", "));
 
@@ -114,7 +122,7 @@ check("no quote points at a missing movie", orphanQuotes === 0);
 
 console.log("\n── Posters and shots ─────────────────────────────────");
 const posterRows = all<{ title: string; poster_path: string | null; poster_url: string | null }>(
-  "SELECT title, poster_path, poster_url FROM movies");
+  "SELECT title, poster_path, poster_url FROM movies");  // artwork is checked for every entry
 const brokenPosters = posterRows
   .filter((r) => r.poster_path && !fs.existsSync(path.join(PUB, r.poster_path)))
   .map((r) => `${r.title} → ${r.poster_path}`);
@@ -135,11 +143,11 @@ const expectedShots = movieRows.reduce(
 check(`movie shots: ${shotRows.length} = ${expectedShots} referenced in the export`, shotRows.length === expectedShots);
 
 console.log("\n── People and headshots ──────────────────────────────");
-const actorLinks = one<{ n: number }>("SELECT count(*) n FROM movie_actors").n;
+const actorLinks = one<{ n: number }>(`SELECT count(*) n FROM movie_actors ma JOIN movies m ON m.id = ma.movie_id WHERE m.${IMPORTED}`).n;
 const expectedActorLinks = movieRows.reduce((n, r) => n + parseRelation(r["Cast"]).length, 0);
 check(`cast links: ${actorLinks} = ${expectedActorLinks} in the export`, actorLinks === expectedActorLinks);
 
-const dirLinks = one<{ n: number }>("SELECT count(*) n FROM movie_directors").n;
+const dirLinks = one<{ n: number }>(`SELECT count(*) n FROM movie_directors md JOIN movies m ON m.id = md.movie_id WHERE m.${IMPORTED}`).n;
 const expectedDirLinks = movieRows.reduce((n, r) => n + parseRelation(r["Director"]).length, 0);
 check(`director links: ${dirLinks} = ${expectedDirLinks} in the export`, dirLinks === expectedDirLinks);
 
@@ -173,7 +181,8 @@ check(`all ${supplied.length} supplied headshots are either attached or reported
 
 console.log("\n── Cinemas ───────────────────────────────────────────");
 const theatreCount = movieRows.filter((r) => parseCheckbox(r["Theatre"])).length;
-const visits = one<{ n: number }>("SELECT count(*) n FROM cinema_visits").n;
+const visits = one<{ n: number }>(
+  `SELECT count(*) n FROM cinema_visits v JOIN movies m ON m.id = v.movie_id WHERE m.${IMPORTED}`).n;
 check(`cinema visits: ${visits} = ${theatreCount} records with Theatre = Yes`, visits === theatreCount);
 
 const badVisits = one<{ n: number }>(
@@ -198,9 +207,8 @@ console.log("\n── Data preservation ─────────────�
 const nullRaw = one<{ n: number }>("SELECT count(*) n FROM movies WHERE title_raw IS NULL OR title_raw = ''").n;
 check("original title strings preserved verbatim", nullRaw === 0);
 const lostCover = one<{ n: number }>(
-  "SELECT count(*) n FROM movies WHERE cover_raw IS NULL AND ? > 0",
-  movieRows.filter((r) => r["Cover"]?.trim()).length).n;
-check("original Cover cell preserved for every record that had one",
+  `SELECT count(*) n FROM movies WHERE cover_raw IS NULL AND ${IMPORTED}`).n;
+check("original Cover cell preserved for every imported record that had one",
   lostCover === movieRows.filter((r) => !r["Cover"]?.trim()).length);
 
 console.log("\n──────────────────────────────────────────────────────");

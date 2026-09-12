@@ -30,10 +30,13 @@ public/people/*
 .env.*
 !.env.example
 
-# Third-party agent skills, installed locally via `npx skills add`.
-# Not part of the application; remove these two lines if you want them shared.
+# Third-party agent skills, installed locally via `npx skills add`. Not part of
+# the application. The project's own skills under .claude/skills/ are kept.
 .agents/
-.claude/
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/add-film/
 
 # OS / editor
 .DS_Store

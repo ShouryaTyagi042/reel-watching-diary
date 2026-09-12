@@ -696,6 +696,54 @@ async function run() {
     stats.quotesInserted++;
   }
 
+  /* ---- assets for entries added in the app ----------------------------- */
+  //
+  // Entries created in the UI are not in the source, so the passes above never
+  // see them. Their artwork and their people's headshots still live in the same
+  // folders, so resolve them here by the same slug match rather than leaving
+  // them reported as orphan files.
+  const appMovies = db
+    .select({ id: s.movies.id, title: s.movies.title, slug: s.movies.slug, posterPath: s.movies.posterPath })
+    .from(s.movies)
+    .where(eq(s.movies.origin, "app"))
+    .all();
+
+  for (const m of appMovies) {
+    if (m.posterPath) continue;
+    const hit = thumbs.find((t) => t.slug === m.slug);
+    if (!hit) {
+      report("warning", "poster-missing", m.title,
+        "Added in the app with no artwork in the thumbnails folder. Rendered with a placeholder.");
+      stats.moviesWithoutPoster++;
+      continue;
+    }
+    usedThumbs.add(hit.absPath);
+    db.update(s.movies).set({
+      posterPath: `/posters/${copyAsset(hit.absPath, path.join(PUB, "posters"), m.slug)}`,
+      posterMatch: "slug",
+      posterSource: hit.fileName,
+      coverKind: "local",
+    }).where(eq(s.movies.id, m.id)).run();
+    stats.postersBySlug++;
+  }
+
+  // Likewise for anyone credited only on an app-created entry.
+  for (const [table, pool, role] of [
+    [s.actors, actorPhotos, "actor"],
+    [s.directors, directorPhotos, "director"],
+  ] as const) {
+    const missing = db
+      .select({ id: table.id, name: table.name, slug: table.slug })
+      .from(table)
+      .where(sql`${table.photoPath} IS NULL`)
+      .all();
+    for (const person of missing) {
+      const photo = resolvePhoto(person.name, person.slug, pool, role);
+      if (!photo.photoPath) continue;
+      db.update(table).set(photo).where(eq(table.id, person.id)).run();
+    }
+  }
+
   /* ---- thumbnails that matched nothing ---- */
   // A thumbnail whose name matches an entry added in the app is accounted for —
   // that entry owns it, the importer simply never saw the record.
