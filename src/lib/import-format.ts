@@ -1,5 +1,8 @@
 /**
- * Parsing helpers for the Notion markdown/CSV export.
+ * Parsing helpers for a Markdown/CSV collection export.
+ *
+ * Used only when seeding the database from an exported collection. Once records
+ * are in the database, nothing here runs again.
  *
  * The export encodes relations as `Display Name (url-encoded/path/to/Page%20<id>.md)`
  * inside comma-separated cells, which cannot be split naively — display names
@@ -7,27 +10,27 @@
  * the `(path)` delimiters instead.
  */
 
-/** A single entry inside a Notion relation cell. */
-export interface NotionRef {
-  /** Display name as rendered by Notion. */
+/** A single entry inside a relation cell. */
+export interface SourceRef {
+  /** Display name as rendered by . */
   name: string;
   /** URL-decoded relative path of the linked page file. */
   path: string;
-  /** 32-hex Notion page id extracted from the filename. */
+  /** 32-hex page id extracted from the filename. */
   id: string | null;
 }
 
 const REF_RE = /([^()]*?)\s*\(([^()]*?\.md)\)/g;
 
 /**
- * Split a Notion relation cell into its entries.
+ * Split a relation cell into its entries.
  *
  * Handles the comma-in-name case by anchoring on the `(...md)` link and taking
  * everything since the previous link as the display name.
  */
-export function parseRelation(cell: string | undefined | null): NotionRef[] {
+export function parseRelation(cell: string | undefined | null): SourceRef[] {
   if (!cell) return [];
-  const out: NotionRef[] = [];
+  const out: SourceRef[] = [];
   let match: RegExpExecArray | null;
   REF_RE.lastIndex = 0;
   while ((match = REF_RE.exec(cell)) !== null) {
@@ -39,7 +42,7 @@ export function parseRelation(cell: string | undefined | null): NotionRef[] {
   return out;
 }
 
-/** Split a Notion multi-file cell (comma + space separated relative paths). */
+/** Split a multi-file cell (comma + space separated relative paths). */
 export function parseFileList(cell: string | undefined | null): string[] {
   if (!cell) return [];
   return cell
@@ -48,7 +51,7 @@ export function parseFileList(cell: string | undefined | null): string[] {
     .filter(Boolean);
 }
 
-/** Extract the trailing 32-hex Notion page id from an exported filename. */
+/** Extract the trailing 32-hex record id from an exported filename. */
 export function pageIdFromPath(p: string): string | null {
   const base = p.split("/").pop() ?? p;
   const m = base.match(/([0-9a-f]{32})(?:_all)?\.(?:md|csv)$/i);
@@ -64,7 +67,7 @@ export function safeDecode(s: string): string {
 }
 
 /**
- * Convert a Notion star-rating string to a 0–5 number.
+ * Convert a star-rating string to a 0–5 number.
  *
  * The tracker uses `★` = 1, `½` = 0.5 and `✰` (hollow star) = 0, e.g.
  * "★★★½✰" → 3.5. Returns null for empty/unparseable values rather than 0, so
@@ -85,7 +88,7 @@ export function parseRating(raw: string | undefined | null): number | null {
   return full + half * 0.5;
 }
 
-/** Notion checkbox cells export as the literal strings "Yes" / "No". */
+/** Checkbox cells export as the literal strings "Yes" / "No". */
 export function parseCheckbox(raw: string | undefined | null): boolean {
   return (raw ?? "").trim().toLowerCase() === "yes";
 }
@@ -96,11 +99,11 @@ const MONTHS: Record<string, number> = {
 };
 
 /**
- * Parse Notion's exported timestamp format: `January 31, 2026 8:41 PM`.
+ * Parse the exported timestamp format: `January 31, 2026 8:41 PM`.
  * Returns an ISO 8601 string, or null when the value is absent/unrecognised.
- * Times are treated as local wall-clock, matching how Notion exported them.
+ * Times are treated as local wall-clock, matching how exported them.
  */
-export function parseNotionDate(raw: string | undefined | null): string | null {
+export function parseSourceDate(raw: string | undefined | null): string | null {
   if (!raw) return null;
   const s = raw.trim();
   if (!s) return null;

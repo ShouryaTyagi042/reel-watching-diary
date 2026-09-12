@@ -219,7 +219,7 @@ export function getGenreBreakdown(): { name: string; slug: string; count: number
     .all();
 }
 
-/** Entries per calendar year, from the Notion "Created time" (the diary date). */
+/** Entries per calendar year, from the "Created time" (the diary date). */
 export function getYearlyActivity(): { year: string; count: number }[] {
   return db
     .select({
@@ -236,7 +236,7 @@ export function getYearlyActivity(): { year: string; count: number }[] {
 }
 
 /**
- * Entries per calendar month, from the Notion "Created time" (the diary date).
+ * Entries per calendar month, from the "Created time" (the diary date).
  * Months with no entries are filled in so the strip reads as a real timeline
  * rather than a list of the busy months only.
  */

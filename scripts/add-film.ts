@@ -30,7 +30,7 @@ import { eq } from "drizzle-orm";
 import { openDb } from "../src/db/connect";
 import * as s from "../src/db/schema";
 import { createEntry, ValidationError } from "../src/lib/entry";
-import { slugify } from "../src/lib/notion";
+import { slugify } from "../src/lib/import-format";
 import { thumbnailStem } from "../src/lib/thumbnail-name";
 
 const UA = "ReelDiary/1.0 (personal film diary, local single-user use)";

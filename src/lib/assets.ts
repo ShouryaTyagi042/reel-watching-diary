@@ -1,7 +1,7 @@
 /**
  * Poster / headshot matching.
  *
- * The Notion export ships each record's cover inside
+ * The imported collection ships each record's cover inside
  * `Databases/Movies and TV Shows/<Title>/<file>`, and the user separately curated
  * `src/Movies Thumbnails/*`. Those two sets turn out to be the *same bytes*, so
  * the mapping between a thumbnail and a movie is established by content hash —
@@ -12,14 +12,14 @@
  *                      record's cover file in the export. Exact by construction.
  *   2. export-cover  — the export's own cover file (used when the curated folder
  *                      has no byte-identical copy).
- *   3. slug          — filename slug vs title slug, for records whose Notion cover
+ *   3. slug          — filename slug vs title slug, for records whose source artwork
  *                      is a remote URL. Only accepted on a strong match.
  * Anything else is left unmatched and reported, rather than guessed at.
  */
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { slugify } from "./notion";
+import { slugify } from "./import-format";
 
 export type PosterMatchKind = "content-hash" | "export-cover" | "slug";
 

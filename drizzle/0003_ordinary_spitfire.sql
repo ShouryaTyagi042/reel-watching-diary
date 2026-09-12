@@ -1,0 +1,1 @@
+ALTER TABLE `movies` ADD `edited_fields` text;

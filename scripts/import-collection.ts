@@ -1,14 +1,16 @@
 /**
- * Notion → SQLite import pipeline.
+ * Seed the diary from an exported collection.
  *
  * Reads the export at `../d` and the curated assets at `../src`, parses each
- * Notion property according to its actual type, matches posters by content hash,
+ * property according to its actual type, matches posters by content hash,
  * derives cinema venues from photo GPS, and upserts everything into SQLite.
  *
- * The run is idempotent: every row is keyed by its Notion page id, writes are
- * upserts, and join tables are rebuilt per record. Re-running produces the same
- * database. The one thing the importer never overwrites is a venue `name` the
- * user has set in the app — the export has no cinema names to overwrite it with.
+ * This is additive. The database is the source of truth, so a record that is
+ * already present is left exactly as it is, edits and all. Re-running only ever
+ * brings in things that are missing: new records, artwork that has since
+ * appeared in the assets folder, headshots for people who had none.
+ *
+ * Nothing here ever overwrites or deletes.
  *
  * Usage:  npm run import  [-- --export <dir>] [--assets <dir>] [--json]
  */
@@ -21,8 +23,8 @@ import { openDb } from "../src/db/connect";
 import * as s from "../src/db/schema";
 import {
   csvToObjects, parseRelation, parseFileList, parseRating, parseCheckbox,
-  parseNotionDate, pageIdFromPath, slugify, safeDecode,
-} from "../src/lib/notion";
+  parseSourceDate, pageIdFromPath, slugify, safeDecode,
+} from "../src/lib/import-format";
 import {
   indexImageDir, md5File, copyAsset, slugMatchScore, isImage, matchPersonPhoto,
   type PosterMatchKind,
@@ -57,7 +59,7 @@ const report = (severity: Severity, kind: string, subject: string | null, detail
   issues.push({ severity, kind, subject, detail });
 
 const stats = {
-  moviesInExport: 0, moviesInserted: 0, moviesUpdated: 0, moviesSkipped: 0,
+  moviesInSource: 0, moviesInserted: 0, moviesSkipped: 0,
   duplicateTitles: 0,
   genresInserted: 0, actorsInserted: 0, directorsInserted: 0,
   quotesInserted: 0, shotsInserted: 0,
@@ -86,7 +88,7 @@ const synthId = (ns: string, key: string) =>
   crypto.createHash("sha1").update(`${ns}:${key}`).digest("hex").slice(0, 32);
 
 /* ------------------------------------------------- 1. read the export files */
-console.log(`▸ Reading Notion export from ${EXPORT_DIR}`);
+console.log(`▸ Reading imported collection from ${EXPORT_DIR}`);
 for (const dir of [EXPORT_DIR, DIARY_DIR, DB_DIR]) {
   if (!fs.existsSync(dir)) {
     console.error(`✖ Not found: ${dir}`);
@@ -107,12 +109,12 @@ const genreRows = genresCsvPath ? csvToObjects(readFile(genresCsvPath)) : [];
 const castRows = castsCsvPath ? csvToObjects(readFile(castsCsvPath)) : [];
 const directorRows = directorCsvPath ? csvToObjects(readFile(directorCsvPath)) : [];
 const quoteRows = quotesCsvPath ? csvToObjects(readFile(quotesCsvPath)) : [];
-stats.moviesInExport = movieRows.length;
+stats.moviesInSource = movieRows.length;
 
 /**
  * The CSV carries the property values but not each row's page id. The per-record
  * markdown files carry the id in their filename. Map title → page file so every
- * movie gets its real Notion id (which is what makes re-import idempotent).
+ * movie gets its real id (which is what makes re-import idempotent).
  */
 const pageByTitle = new Map<string, { id: string; rel: string }>();
 if (fs.existsSync(MOVIE_PAGES_DIR)) {
@@ -143,10 +145,6 @@ if (!tableCount.n) {
   process.exit(1);
 }
 
-const existingMovieIds = new Set(
-  (db.select({ id: s.movies.id }).from(s.movies).all() as { id: string }[]).map((r) => r.id),
-);
-
 /* ------------------------------------------------------- 4. lookup tables */
 type Lookup = { id: string; name: string; slug: string; photoPath: string | null };
 
@@ -164,10 +162,10 @@ function upsertGenres(): Map<string, string> {
     const slug = slugify(r.name);
     const id = synthId("genre", slug);
     db.insert(s.genres)
-      .values({ id, name: r.name, slug, notionTotalMovies: Number.isFinite(r.total!) ? r.total : null, notionSummary: r.summary })
+      .values({ id, name: r.name, slug, sourceTotalMovies: Number.isFinite(r.total!) ? r.total : null, sourceSummary: r.summary })
       .onConflictDoUpdate({
         target: s.genres.id,
-        set: { name: r.name, notionTotalMovies: Number.isFinite(r.total!) ? r.total : null, notionSummary: r.summary },
+        set: { name: r.name, sourceTotalMovies: Number.isFinite(r.total!) ? r.total : null, sourceSummary: r.summary },
       })
       .run();
     bySlug.set(slug, id);
@@ -433,7 +431,7 @@ async function run() {
         "No per-record page file alongside the data; using a synthetic id derived from the title.");
     }
 
-    // Distinct Notion records that collapse to the same slug must stay distinct.
+    // Distinct records that collapse to the same slug must stay distinct.
     if (seenIds.has(id)) {
       stats.moviesSkipped++;
       stats.duplicateTitles++;
@@ -454,14 +452,14 @@ async function run() {
     // A record arriving from the source that matches an entry already added by
     // hand is almost certainly the same film twice. Both are kept — merging them
     // would risk losing a rating or a date — but the collision is reported.
-    const appTwin = db
+    const twin = db
       .select({ title: s.movies.title, slug: s.movies.slug })
       .from(s.movies)
-      .where(and(eq(s.movies.origin, "app"), eq(s.movies.slug, slugify(title))))
+      .where(eq(s.movies.slug, slugify(title)))
       .get();
-    if (appTwin && appTwin.slug !== slug) {
+    if (twin && twin.slug !== slug) {
       report("warning", "possible-duplicate", title,
-        `An entry added in the app ("${appTwin.title}") looks like the same title. Both were kept — delete whichever is redundant.`);
+        `An existing entry ("${twin.title}") looks like the same title. Both were kept; delete whichever is redundant.`);
     }
 
     const year = row["Year"] ? Number(row["Year"]) : null;
@@ -473,7 +471,7 @@ async function run() {
     if (ratingRaw && ratingValue === null) {
       report("warning", "malformed-value", title, `Rating "${ratingRaw}" could not be parsed to a number — the raw string is preserved.`);
     }
-    const createdTime = parseNotionDate(row["Created time"]);
+    const createdTime = parseSourceDate(row["Created time"]);
     if (row["Created time"] && !createdTime) {
       report("warning", "malformed-value", title, `Created time "${row["Created time"]}" could not be parsed — stored as NULL.`);
     }
@@ -492,30 +490,25 @@ async function run() {
       coverRaw: poster.coverRaw, coverKind: poster.coverKind,
       posterPath: poster.posterPath, posterUrl: poster.posterUrl,
       posterMatch: poster.posterMatch, posterSource: poster.posterSource,
-      notionPath: page?.rel ?? null,
+      sourcePath: page?.rel ?? null,
     };
 
-    // An entry created in the app is the user's own record, not a projection of
-    // the export. Never overwrite one.
+    // Already present, so it belongs to the database now. Leave it untouched.
     const existing = db
-      .select({ origin: s.movies.origin, title: s.movies.title })
+      .select({ title: s.movies.title })
       .from(s.movies)
       .where(eq(s.movies.id, id))
       .get();
-    if (existing?.origin === "app") {
+    if (existing) {
       stats.moviesSkipped++;
-      report("info", "app-record-preserved", title,
-        "This entry was created in the app, so the importer left it untouched.");
       continue;
     }
 
-    db.insert(s.movies).values(values)
-      .onConflictDoUpdate({ target: s.movies.id, set: { ...values, id: undefined as never } })
-      .run();
-    if (existingMovieIds.has(id)) stats.moviesUpdated++; else stats.moviesInserted++;
+    db.insert(s.movies).values(values).onConflictDoNothing().run();
+    stats.moviesInserted++;
     importedIds.add(id);
 
-    // --- relations: rebuilt from scratch each run so removals propagate ---
+    // --- relations for the newly inserted record ---
     db.delete(s.movieGenres).where(eq(s.movieGenres.movieId, id)).run();
     for (const g of parseRelation(row["Genres"])) {
       db.insert(s.movieGenres).values({ movieId: id, genreId: ensureGenre(g.name, genreMap) })
@@ -570,7 +563,7 @@ async function run() {
   //
   // Only theatre-flagged records feed venue derivation. A geotagged shot on a
   // record whose Theatre checkbox is No is *not* evidence of a cinema visit —
-  // the Notion value is authoritative and is preserved as-is, with the conflict
+  // the value is authoritative and is preserved as-is, with the conflict
   // reported rather than resolved.
   const geoShots = allShots.filter(
     (sh): sh is ShotRecord & GeoPoint => sh.theatre && sh.lat !== null && sh.lng !== null,
@@ -639,11 +632,7 @@ async function run() {
   }
 
   /* ---- one cinema visit per theatre-flagged record ---- */
-  // Rebuild only the visits this importer owns. Visits belonging to entries added
-  // in the app are the user's own records and must survive a re-import.
-  db.delete(s.cinemaVisits)
-    .where(sql`${s.cinemaVisits.movieId} IN (SELECT id FROM movies WHERE origin = 'notion')`)
-    .run();
+  // Never clear the table: a visit already recorded belongs to the database.
   for (const m of theatreMovies) {
     const shots = allShots.filter((sh) => sh.movieId === m.id);
     const dated = shots.filter((sh) => sh.capturedAt).sort((a, b) => a.capturedAt!.localeCompare(b.capturedAt!));
@@ -655,10 +644,10 @@ async function run() {
       movieId: m.id,
       venueId,
       visitedAt: dated[0]?.capturedAt ?? m.createdTime,
-      visitedAtSource: dated[0]?.capturedAt ? "photo-exif" : "notion-created-time",
+      visitedAtSource: dated[0]?.capturedAt ? "photo-exif" : "record-date",
     }).onConflictDoUpdate({
       target: s.cinemaVisits.movieId,
-      set: { venueId, visitedAt: dated[0]?.capturedAt ?? m.createdTime, visitedAtSource: dated[0]?.capturedAt ? "photo-exif" : "notion-created-time" },
+      set: { venueId, visitedAt: dated[0]?.capturedAt ?? m.createdTime, visitedAtSource: dated[0]?.capturedAt ? "photo-exif" : "record-date" },
     }).run();
 
     stats.cinemaVisits++;
@@ -688,7 +677,7 @@ async function run() {
       id, text,
       saidBy: (q["Said by"] ?? "").trim() || null,
       favorite: parseCheckbox(q["Favorite"]),
-      createdTime: parseNotionDate(q["Created time"]),
+      createdTime: parseSourceDate(q["Created time"]),
       movieId,
     };
     db.insert(s.quotes).values(values)
@@ -702,18 +691,18 @@ async function run() {
   // see them. Their artwork and their people's headshots still live in the same
   // folders, so resolve them here by the same slug match rather than leaving
   // them reported as orphan files.
-  const appMovies = db
+  const needArt = db
     .select({ id: s.movies.id, title: s.movies.title, slug: s.movies.slug, posterPath: s.movies.posterPath })
     .from(s.movies)
-    .where(eq(s.movies.origin, "app"))
+    .where(sql`${s.movies.posterPath} IS NULL AND ${s.movies.posterUrl} IS NULL`)
     .all();
 
-  for (const m of appMovies) {
+  for (const m of needArt) {
     if (m.posterPath) continue;
     const hit = thumbs.find((t) => t.slug === m.slug);
     if (!hit) {
       report("warning", "poster-missing", m.title,
-        "Added in the app with no artwork in the thumbnails folder. Rendered with a placeholder.");
+        "No artwork in the thumbnails folder. Rendered with a placeholder.");
       stats.moviesWithoutPoster++;
       continue;
     }
@@ -745,14 +734,13 @@ async function run() {
   }
 
   /* ---- thumbnails that matched nothing ---- */
-  // A thumbnail whose name matches an entry added in the app is accounted for —
-  // that entry owns it, the importer simply never saw the record.
-  const appSlugs = new Set(
-    (db.select({ slug: s.movies.slug }).from(s.movies).where(eq(s.movies.origin, "app")).all() as { slug: string }[])
-      .map((r) => r.slug),
+  // A thumbnail matching any entry in the diary is accounted for, whether or not
+  // this run happened to touch that record.
+  const allSlugs = new Set(
+    (db.select({ slug: s.movies.slug }).from(s.movies).all() as { slug: string }[]).map((r) => r.slug),
   );
   for (const t of thumbs) {
-    if (usedThumbs.has(t.absPath) || appSlugs.has(t.slug)) continue;
+    if (usedThumbs.has(t.absPath) || allSlugs.has(t.slug)) continue;
     stats.thumbnailsUnmatched++;
     report("warning", "thumbnail-unmatched", t.fileName,
       "This thumbnail does not correspond to any entry in the diary. Left unassigned rather than guessed at.");
@@ -771,20 +759,6 @@ async function run() {
     }
   }
 
-  /* ---- records removed from the export since the last import ---- */
-  for (const id of existingMovieIds) {
-    if (importedIds.has(id)) continue;
-    const row = db
-      .select({ title: s.movies.title, origin: s.movies.origin })
-      .from(s.movies)
-      .where(eq(s.movies.id, id))
-      .get();
-    // Entries added in the app are expected to be absent from the source; only
-    // previously-imported records going missing is worth reporting.
-    if (row?.origin === "app") continue;
-    report("info", "stale-record", row?.title ?? id,
-      "Present in the database but not in this source. Left in place — the importer never deletes records.");
-  }
 
   /* ---- persist the report ---- */
   db.delete(s.importIssues).run();
@@ -800,10 +774,9 @@ async function run() {
   } else {
     const line = (k: string, v: unknown) => console.log(`   ${k.padEnd(34)} ${v}`);
     console.log("\n─── Import report ───────────────────────────────────");
-    line("Movie records in export", stats.moviesInExport);
+    line("Records in the source", stats.moviesInSource);
     line("Inserted", stats.moviesInserted);
-    line("Updated", stats.moviesUpdated);
-    line("Skipped", stats.moviesSkipped);
+    line("Already in the diary, left alone", stats.moviesSkipped);
     line("Duplicate title collisions", stats.duplicateTitles);
     console.log("");
     line("Genres", stats.genresInserted);

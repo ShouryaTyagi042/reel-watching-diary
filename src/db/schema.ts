@@ -1,8 +1,11 @@
 /**
- * Database schema — derived directly from the Notion export
- * "Movies and TV Shows Diary" (5 linked databases).
+ * Database schema.
  *
- * Every Notion property has a home here. Where a Notion property has no exact
+ * This database is the source of truth for the diary. Records can be created in
+ * the app or seeded from an exported collection; once here they are equal, and
+ * nothing overwrites them.
+ *
+ * Every property has a home here. Where a property has no exact
  * relational equivalent (star-string ratings, "Cover" which is either a file or
  * a URL, multi-file "Movie Shots"), the raw original value is preserved
  * alongside the normalised one so nothing from the export is lost.
@@ -19,42 +22,42 @@ import {
 } from "drizzle-orm/sqlite-core";
 
 /* ------------------------------------------------------------------ movies */
-/** Notion DB: "Movies and TV Shows" (38 rows). */
+/** Movies and TV Shows. */
 export const movies = sqliteTable(
   "movies",
   {
-    /** Notion page id, taken from the exported filename suffix. Stable across re-exports. */
+    /** Stable record id. Seeded records keep the id from their source file. */
     id: text("id").primaryKey(),
-    /** Title exactly as stored in Notion, including any trailing spaces. */
+    /** Title exactly as first recorded, including any trailing whitespace. */
     titleRaw: text("title_raw").notNull(),
     /** Trimmed title used for display and search. */
     title: text("title").notNull(),
     /** URL-safe identifier derived from `title`. */
     slug: text("slug").notNull(),
 
-    /** Notion "Year" (number) — the film's release year, not the watch year. */
+    /** Release year, not the watch year. */
     year: integer("year"),
-    /** Notion "Format" select: "Movie" | "TV Show". */
+    /** "Format" select: "Movie" | "TV Show". */
     format: text("format"),
-    /** Notion "Status" select: "Watched" | "Watching" | "To Watch". */
+    /** "Status" select: "Watched" | "Watching" | "To Watch". */
     status: text("status"),
-    /** Notion "Series Name" (text), e.g. "James Bond - Daniel Craig". */
+    /** "Series Name" (text), e.g. "James Bond - Daniel Craig". */
     seriesName: text("series_name"),
 
-    /** Notion "Rating" as written, e.g. "★★★½✰". Preserved verbatim. */
+    /** "Rating" as written, e.g. "★★★½✰". Preserved verbatim. */
     ratingRaw: text("rating_raw"),
     /** `ratingRaw` parsed to a 0–5 scale (★=1, ½=0.5, ✰=0). NULL when unrated. */
     ratingValue: real("rating_value"),
 
-    /** Notion "Theatre" checkbox — Yes means this was watched in a cinema. */
+    /** "Theatre" checkbox — Yes means this was watched in a cinema. */
     watchedInTheatre: integer("watched_in_theatre", { mode: "boolean" })
       .notNull()
       .default(false),
 
-    /** Notion "Created time" — the diary entry date (ISO 8601). */
+    /** "Created time" — the diary entry date (ISO 8601). */
     createdTime: text("created_time"),
 
-    /** Notion "Cover" cell verbatim (either a relative export path or an https URL). */
+    /** "Cover" cell verbatim (either a relative export path or an https URL). */
     coverRaw: text("cover_raw"),
     /** "local" when the export shipped a file, "external" for a remote URL, NULL when absent. */
     coverKind: text("cover_kind"),
@@ -67,17 +70,12 @@ export const movies = sqliteTable(
     /** Original filename of the matched asset, for traceability. */
     posterSource: text("poster_source"),
 
-    /** Relative path of this record's page file inside the export. */
-    notionPath: text("notion_path"),
-
     /**
-     * Where this record came from: "notion" for rows built by the importer,
-     * "app" for entries added in the UI.
-     *
-     * The importer keys on this so the two never fight: it will not overwrite an
-     * app-created row, and it does not report one as missing from the export.
+     * Where this record was first seeded from, if it was.
+     * NULL for entries created in the app. Informational only: the database is
+     * the source of truth and nothing re-reads this.
      */
-    origin: text("origin").notNull().default("notion"),
+    sourcePath: text("source_path"),
   },
   (t) => [
     uniqueIndex("movies_slug_idx").on(t.slug),
@@ -87,17 +85,17 @@ export const movies = sqliteTable(
 );
 
 /* ------------------------------------------------------------------ genres */
-/** Notion DB: "Genres" (19 rows, including several with no movies). */
+/** Genres. */
 export const genres = sqliteTable(
   "genres",
   {
     id: text("id").primaryKey(),
     name: text("name").notNull(),
     slug: text("slug").notNull(),
-    /** Notion rollup "Total Movies" as exported. Kept for reference; the UI counts live rows. */
-    notionTotalMovies: integer("notion_total_movies"),
-    /** Notion formula "Summary", e.g. "To watch: 1 | Watching: 0 | Watched: 10". */
-    notionSummary: text("notion_summary"),
+    /** rollup "Total Movies" as exported. Kept for reference; the UI counts live rows. */
+    sourceTotalMovies: integer("source_total_movies"),
+    /** formula "Summary", e.g. "To watch: 1 | Watching: 0 | Watched: 10". */
+    sourceSummary: text("source_summary"),
   },
   (t) => [uniqueIndex("genres_slug_idx").on(t.slug)],
 );
@@ -112,7 +110,7 @@ export const movieGenres = sqliteTable(
 );
 
 /* ------------------------------------------------------------------ people */
-/** Notion DB: "Casts" (74 rows). */
+/** Casts. */
 export const actors = sqliteTable(
   "actors",
   {
@@ -134,13 +132,13 @@ export const movieActors = sqliteTable(
   {
     movieId: text("movie_id").notNull().references(() => movies.id, { onDelete: "cascade" }),
     actorId: text("actor_id").notNull().references(() => actors.id, { onDelete: "cascade" }),
-    /** Billing order as listed in the Notion "Cast" relation. */
+    /** Billing order as listed in the "Cast" relation. */
     position: integer("position").notNull().default(0),
   },
   (t) => [primaryKey({ columns: [t.movieId, t.actorId] })],
 );
 
-/** Notion DB: "Director" (5 rows). */
+/** Director. */
 export const directors = sqliteTable(
   "directors",
   {
@@ -164,15 +162,15 @@ export const movieDirectors = sqliteTable(
 );
 
 /* ------------------------------------------------------------------ quotes */
-/** Notion DB: "Quotes" (11 rows). */
+/** Quotes. */
 export const quotes = sqliteTable(
   "quotes",
   {
     id: text("id").primaryKey(),
     text: text("text").notNull(),
-    /** Notion "Said by" — the character who says the line. */
+    /** "Said by" — the character who says the line. */
     saidBy: text("said_by"),
-    /** Notion "Favorite" checkbox. */
+    /** "Favorite" checkbox. */
     favorite: integer("favorite", { mode: "boolean" }).notNull().default(false),
     createdTime: text("created_time"),
     movieId: text("movie_id").references(() => movies.id, { onDelete: "cascade" }),
@@ -184,7 +182,7 @@ export const quotes = sqliteTable(
 /**
  * Cinemas.
  *
- * The Notion export records only a `Theatre` yes/no checkbox — it has no cinema
+ * The export records only a `Theatre` yes/no checkbox — it has no cinema
  * names. Distinct venues are therefore derived from the GPS EXIF embedded in the
  * "Movie Shots" photos taken during theatre visits: shots within ~250 m of each
  * other are treated as the same venue.
@@ -213,7 +211,7 @@ export const venues = sqliteTable(
 );
 
 /**
- * One row per cinema outing: a movie whose Notion `Theatre` checkbox is Yes.
+ * One row per cinema outing: a movie whose `Theatre` checkbox is Yes.
  *
  * `venueId` is NULL when the visit has no geotagged photo to place it — the
  * visit is still real and still counted, the venue is simply unknown.
@@ -224,9 +222,9 @@ export const cinemaVisits = sqliteTable(
     id: text("id").primaryKey(),
     movieId: text("movie_id").notNull().references(() => movies.id, { onDelete: "cascade" }),
     venueId: text("venue_id").references(() => venues.id, { onDelete: "set null" }),
-    /** Photo capture time when available, otherwise the Notion "Created time". */
+    /** Photo capture time when available, otherwise the "Created time". */
     visitedAt: text("visited_at"),
-    /** "photo-exif" when dated from a shot, "notion-created-time" otherwise. */
+    /** "photo-exif" when dated from a shot, "record-date" otherwise. */
     visitedAtSource: text("visited_at_source"),
   },
   (t) => [
@@ -236,7 +234,7 @@ export const cinemaVisits = sqliteTable(
 );
 
 /* ------------------------------------------------------------- movie shots */
-/** Notion "Movie Shots" files — photos taken by the user, one row per file. */
+/** "Movie Shots" files — photos taken by the user, one row per file. */
 export const movieShots = sqliteTable(
   "movie_shots",
   {

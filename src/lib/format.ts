@@ -1,6 +1,6 @@
 /** Presentation helpers. Shared by server components and client components. */
 
-/** A movie's rating split into the glyphs Notion itself uses. */
+/** A movie's rating split into the glyphs itself uses. */
 export interface StarParts { full: number; half: boolean; empty: number }
 
 export function starParts(value: number | null): StarParts | null {

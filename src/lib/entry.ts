@@ -9,7 +9,7 @@ import crypto from "node:crypto";
 import { eq } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import * as s from "@/db/schema";
-import { slugify } from "./notion";
+import { slugify } from "./import-format";
 
 /** Any drizzle handle over the diary schema, from the app or from a script. */
 export type DiaryDb = BetterSQLite3Database<typeof import("@/db/schema")>;
@@ -23,7 +23,7 @@ export class ValidationError extends Error {
 
 /* ------------------------------------------------------------------ shared */
 
-/** Ids for app-created rows are prefixed so they can never look like a Notion page id. */
+/** Ids for app-created rows are prefixed so they can never look like a record id. */
 const appId = () => `app_${crypto.randomBytes(12).toString("hex")}`;
 
 /** Find a free slug, suffixing only if the natural one is taken. */
@@ -91,7 +91,7 @@ export interface NewEntryInput {
 const FORMATS = ["Movie", "TV Show"];
 const STATUSES = ["Watched", "Watching", "To Watch"];
 
-/** Render a 0–5 number in the same star notation the Notion tracker uses. */
+/** Render a 0–5 number in the same star notation the diary uses. */
 export function toStarString(value: number): string {
   const full = Math.floor(value);
   const half = value - full >= 0.5;
@@ -159,8 +159,7 @@ export function createEntry(db: DiaryDb, input: NewEntryInput) {
     posterUrl: null,
     posterMatch: null,
     posterSource: null,
-    notionPath: null,
-    origin: "app",
+    sourcePath: null,
   }).run();
 
   for (const g of dedupe(input.genres)) {
@@ -176,7 +175,7 @@ export function createEntry(db: DiaryDb, input: NewEntryInput) {
   }
 
   // A cinema outing with no geotagged photo behaves exactly like one imported
-  // from Notion: counted as a visit, venue left unknown rather than guessed.
+  // from the source: counted as a visit, venue left unknown rather than guessed.
   if (input.watchedInTheatre) {
     db.insert(s.cinemaVisits).values({
       id: synthId("visit", id),
@@ -212,5 +211,220 @@ function dedupe(values: string[] | undefined): string[] {
       seen.add(key);
       return true;
     });
+}
+
+
+/* ------------------------------------------------------------ edit entry -- */
+
+/**
+ * Fields an entry exposes for editing. Anything absent from a patch is left
+ * alone, so a caller can send one field without disturbing the rest.
+ */
+export interface EntryPatch {
+  title?: string;
+  year?: string | number | null;
+  format?: string | null;
+  status?: string | null;
+  rating?: string | number | null;
+  seriesName?: string | null;
+  watchedInTheatre?: boolean;
+  watchedOn?: string | null;
+  genres?: string[];
+  cast?: string[];
+  directors?: string[];
+}
+
+/** Every editable field, in the order the form presents them. */
+export const EDITABLE_FIELDS = [
+  "title", "year", "format", "status", "rating",
+  "seriesName", "watchedInTheatre", "watchedOn",
+  "genres", "cast", "directors",
+] as const;
+
+export type EditableField = (typeof EDITABLE_FIELDS)[number];
+
+/**
+ * Apply an edit to an existing entry.
+ *
+ * The slug is deliberately not recomputed when the title changes. It is the
+ * record's address, linked from cinema and people pages, and silently moving it
+ * would orphan those links.
+ */
+export function updateEntry(db: DiaryDb, slug: string, patch: EntryPatch) {
+  const movie = db.select().from(s.movies).where(eq(s.movies.slug, slug)).get();
+  if (!movie) throw new ValidationError("No entry with that address.");
+
+  const set: Record<string, unknown> = {};
+  const changed: string[] = [];
+
+  const note = (field: EditableField, value: unknown, current: unknown) => {
+    if (value === current) return false;
+    set[field] = value;
+    changed.push(field);
+    return true;
+  };
+
+  if (patch.title !== undefined) {
+    const title = patch.title.trim();
+    if (!title) throw new ValidationError("A title is required.");
+    if (title.length > 300) throw new ValidationError("That title is too long (300 characters max).");
+    if (title !== movie.title) {
+      set.title = title;
+      set.titleRaw = title;
+      changed.push("title");
+    }
+  }
+
+  if (patch.year !== undefined) {
+    let year: number | null = null;
+    if (patch.year !== null && `${patch.year}`.trim() !== "") {
+      year = Number(patch.year);
+      if (!Number.isInteger(year) || year < 1870 || year > 2200) {
+        throw new ValidationError("Year must be a whole number between 1870 and 2200.");
+      }
+    }
+    note("year", year, movie.year);
+  }
+
+  if (patch.format !== undefined) {
+    const format = patch.format?.trim() || null;
+    if (format && !FORMATS.includes(format)) {
+      throw new ValidationError(`Format must be one of: ${FORMATS.join(", ")}.`);
+    }
+    note("format", format, movie.format);
+  }
+
+  if (patch.status !== undefined) {
+    const status = patch.status?.trim() || null;
+    if (status && !STATUSES.includes(status)) {
+      throw new ValidationError(`Status must be one of: ${STATUSES.join(", ")}.`);
+    }
+    note("status", status, movie.status);
+  }
+
+  if (patch.rating !== undefined) {
+    let value: number | null = null;
+    if (patch.rating !== null && `${patch.rating}`.trim() !== "") {
+      value = Number(patch.rating);
+      if (!Number.isFinite(value) || value < 0 || value > 5 || (value * 2) % 1 !== 0) {
+        throw new ValidationError("Rating must be between 0 and 5, in half-star steps.");
+      }
+    }
+    if (value !== movie.ratingValue) {
+      set.ratingValue = value;
+      set.ratingRaw = value === null ? null : toStarString(value);
+      changed.push("rating");
+    }
+  }
+
+  if (patch.seriesName !== undefined) {
+    note("seriesName", patch.seriesName?.trim() || null, movie.seriesName);
+  }
+
+  if (patch.watchedOn !== undefined) {
+    let iso: string | null = null;
+    if (patch.watchedOn?.trim()) {
+      const d = new Date(patch.watchedOn);
+      if (Number.isNaN(d.getTime())) throw new ValidationError("That date could not be read.");
+      iso = d.toISOString();
+    }
+    if (iso !== movie.createdTime) {
+      set.createdTime = iso;
+      changed.push("watchedOn");
+    }
+  }
+
+  /* --- relations are replaced wholesale when supplied --- */
+  const relationChanged = (
+    field: EditableField,
+    values: string[] | undefined,
+    current: string[],
+    write: (names: string[]) => void,
+  ) => {
+    if (values === undefined) return;
+    const next = dedupe(values);
+    const same =
+      next.length === current.length &&
+      next.every((v, i) => slugify(v) === slugify(current[i] ?? ""));
+    if (same) return;
+    write(next);
+    changed.push(field);
+  };
+
+  const currentGenres = db
+    .select({ name: s.genres.name })
+    .from(s.movieGenres)
+    .innerJoin(s.genres, eq(s.genres.id, s.movieGenres.genreId))
+    .where(eq(s.movieGenres.movieId, movie.id))
+    .all()
+    .map((r) => r.name);
+
+  relationChanged("genres", patch.genres, currentGenres, (names) => {
+    db.delete(s.movieGenres).where(eq(s.movieGenres.movieId, movie.id)).run();
+    for (const n of names) {
+      db.insert(s.movieGenres)
+        .values({ movieId: movie.id, genreId: ensureGenre(db, n) })
+        .onConflictDoNothing().run();
+    }
+  });
+
+  const currentCast = db
+    .select({ name: s.actors.name })
+    .from(s.movieActors)
+    .innerJoin(s.actors, eq(s.actors.id, s.movieActors.actorId))
+    .where(eq(s.movieActors.movieId, movie.id))
+    .orderBy(s.movieActors.position)
+    .all()
+    .map((r) => r.name);
+
+  relationChanged("cast", patch.cast, currentCast, (names) => {
+    db.delete(s.movieActors).where(eq(s.movieActors.movieId, movie.id)).run();
+    names.forEach((n, i) => {
+      db.insert(s.movieActors)
+        .values({ movieId: movie.id, actorId: ensureActor(db, n), position: i })
+        .onConflictDoNothing().run();
+    });
+  });
+
+  const currentDirectors = db
+    .select({ name: s.directors.name })
+    .from(s.movieDirectors)
+    .innerJoin(s.directors, eq(s.directors.id, s.movieDirectors.directorId))
+    .where(eq(s.movieDirectors.movieId, movie.id))
+    .all()
+    .map((r) => r.name);
+
+  relationChanged("directors", patch.directors, currentDirectors, (names) => {
+    db.delete(s.movieDirectors).where(eq(s.movieDirectors.movieId, movie.id)).run();
+    for (const n of names) {
+      db.insert(s.movieDirectors)
+        .values({ movieId: movie.id, directorId: ensureDirector(db, n) })
+        .onConflictDoNothing().run();
+    }
+  });
+
+  /* --- a cinema visit follows the theatre flag --- */
+  if (patch.watchedInTheatre !== undefined && patch.watchedInTheatre !== movie.watchedInTheatre) {
+    set.watchedInTheatre = patch.watchedInTheatre;
+    changed.push("watchedInTheatre");
+
+    if (patch.watchedInTheatre) {
+      db.insert(s.cinemaVisits).values({
+        id: synthId("visit", movie.id),
+        movieId: movie.id,
+        venueId: null,
+        visitedAt: (set.createdTime as string | undefined) ?? movie.createdTime,
+        visitedAtSource: "manual-entry",
+      }).onConflictDoNothing().run();
+    } else {
+      db.delete(s.cinemaVisits).where(eq(s.cinemaVisits.movieId, movie.id)).run();
+    }
+  }
+
+  if (changed.length) {
+    db.update(s.movies).set(set).where(eq(s.movies.id, movie.id)).run();
+  }
+
+  return { slug: movie.slug, changed };
 }
 

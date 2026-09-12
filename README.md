@@ -1,45 +1,54 @@
-# Reel — a watching diary
+# Reel, a watching diary
 
 A personal diary of the films and shows you have watched, and the cinemas you
-saw them in. Add entries as you go, or bulk-load an existing collection.
+saw them in. Standalone: the SQLite database is the source of truth, and nothing
+overwrites it.
 
 The interesting part is the cinemas. An entry records *that* you were in a
-cinema, not which one — but the photos you took there carry GPS, so venues are
-worked out by clustering those positions. A cinema arrives unnamed, as a fix on
-the earth, and you name it.
+cinema, not which one, but the photos you took there carry GPS. Upload one and
+the venue is placed; a later photo within 250 m counts as the same cinema. A
+venue arrives unnamed, as a fix on the earth, and you name it.
 
-## Two ways to get data in
+## Getting data in
 
-**Add an entry** — `/add` in the app. Title is the only required field.
-Artwork you attach is written into your thumbnails folder using the diary's
-naming convention (lower snake_case, e.g. `mirzapur_the_movie.jpg`), so it sits
-alongside the rest of your collection and is picked up by any later import.
+**Add an entry** at `/add`. Title is the only required field.
 
-**Import a collection** — point the importer at an exported Notion "Movies and
-TV Shows" database and it loads the records, matches your artwork and headshots
-to them, and derives cinemas from photo GPS. Expected layout:
+**Add one by name** with facts resolved from Wikipedia and Wikidata rather than
+typed from memory:
+
+```bash
+npx tsx scripts/add-film.ts "About Time" --dry-run
+npx tsx scripts/add-film.ts "About Time" && npm run import
+```
+
+**Seed from an exported collection** (Markdown and CSV, as the source tool and similar
+tools produce). This is additive: anything already in the diary is left exactly
+as it is, edits included.
 
 ```
 your-folder/
-├── d/      Exported collection (Markdown & CSV, with subpages)
-├── src/    Your artwork and headshots
+├── d/      An exported collection, if you have one to seed from
+├── src/    Your artwork, headshots and screening photos
 │   ├── Movies Thumbnails/
 │   ├── Actors/
-│   └── Directors/
+│   ├── Directors/
+│   └── Movie Shots/
 └── web/    This repository
 ```
 
 ```bash
-npm run import -- --export ../d --assets ../src
+npm run seed -- --export ../d --assets ../src
 ```
 
-The two coexist. Entries you add are marked `origin: "app"`; the importer never
-overwrites them, never deletes them, and does not report them as missing from
-the source. Imported records are rebuilt from the source on every run.
+## Editing
 
-The importer only ever *reads* those folders. It copies matched images into
-`public/` and writes a SQLite file at `data/diary.db` — all gitignored, so your
-diary never lands in version control.
+Every field on an entry is editable in place from its page: title, release year,
+format, status, rating, genres, cast, director, series, the logged date, and
+whether it was watched in a cinema. Photos from a screening are uploaded there
+too, and their GPS is what places the venue.
+
+Because the database is the source of truth, a saved edit is simply the record
+now. Re-running the seed will not revert it.
 
 ---
 
@@ -58,10 +67,10 @@ npm run dev            # http://localhost:3000
 |---|---|
 | `npm install` | Install dependencies |
 | `npm run db:migrate` | Create/upgrade `data/diary.db` from `drizzle/*.sql` |
-| `npm run import` | Load an exported collection into the database |
+| `npm run import` / `npm run seed` | Seed from an exported collection. Additive; never overwrites |
 | `npm run setup` | `db:migrate` then `import` |
 | `npm run db:reset` | Delete the database and re-migrate (then run `import`) |
-| `npm run verify` | Re-read the export and assert the database matches it |
+| `npm run verify` | Check the database is internally consistent and every file it points at exists |
 | `npm run dev` | Development server |
 | `npm run build` | Production build |
 | `npm start` | Serve the production build |
@@ -99,10 +108,10 @@ Where a source property has no clean relational equivalent, both forms are kept:
 - **Rating** — `rating_raw` keeps `★★★½✰` exactly as written; `rating_value`
   is the 0–5 number derived from it (★ = 1, ½ = 0.5, ✰ = 0). Unrated stays
   `NULL`, never `0`.
-- **Cover** — Notion stores either a file path or a URL in one property, so
+- **Cover** — the source tool stores either a file path or a URL in one property, so
   `cover_raw` keeps the original cell, `cover_kind` says which it was, and
   `poster_path` / `poster_url` hold the resolved image.
-- **Title** — `title_raw` preserves the string exactly as Notion stored it,
+- **Title** — `title_raw` preserves the string exactly as the source tool stored it,
   including any trailing whitespace; `title` is the trimmed display form used
   for search, sorting and slugs.
 
@@ -112,7 +121,7 @@ Where a source property has no clean relational equivalent, both forms are kept:
 
 **Movies and TV Shows** (39 records)
 
-| Notion property | Type | Column(s) |
+| the source tool property | Type | Column(s) |
 |---|---|---|
 | Title | Title | `title_raw` (verbatim), `title`, `slug` |
 | Year | Number | `year` — the *release* year |
@@ -129,11 +138,11 @@ Where a source property has no clean relational equivalent, both forms are kept:
 | Director | Relation | `movie_directors` |
 | Movie Quotes | Relation | `quotes.movie_id` |
 
-**Genres** — `Name` → `genres.name`. The Notion rollups (`Total Movies`,
+**Genres** — `Name` → `genres.name`. The the source tool rollups (`Total Movies`,
 `Summary`) are kept in `notion_total_movies` / `notion_summary` for reference;
 the UI counts live rows instead, so the numbers stay right if the data changes.
 `Display Total Movies`, `To Watch`, `Watched` and `Watching` are the same
-rollups re-formatted by Notion and are not stored separately — the identical
+rollups re-formatted by the source tool and are not stored separately — the identical
 information is available from `Summary` and from the live counts.
 
 **Casts** → `actors`. **Director** → `directors`. Both relation columns in
@@ -142,17 +151,15 @@ tables. **Quotes** → `quotes` (`Quote`, `Said by`, `Favorite`, `Created time`)
 
 ### A note on dates
 
-The export has no "date watched" property. The only per-record date is Notion's
-**Created time**, which is when the entry was written. The app labels it
-**"Logged"** rather than presenting it as a watch date. The exception is a
-cinema visit with a photo attached: there the photo's own EXIF timestamp *is*
-the time you were in the room, and that is what the cinema pages show.
+Seeded records carry only the date their entry was created in the source tool,
+which is when it was written rather than when it was watched. The UI labels that
+"Logged". The exception is a cinema visit with a photo attached: the photo's own
+timestamp is when you were in the room, and that is what the cinema pages show.
 
----
 
 ## Thumbnail matching
 
-`src/Movies Thumbnails` and the covers inside the Notion export turned out to be
+`src/Movies Thumbnails` and the covers inside the the source tool export turned out to be
 the **same files**, so the mapping is established by MD5 rather than by guessing
 at filenames:
 
@@ -161,7 +168,7 @@ at filenames:
 | `content-hash` | 36 | A curated thumbnail is byte-identical to that record's cover. Exact. |
 | `export-cover` | 1 | No identical curated copy; the export's own cover file was used. |
 | `slug` | 0 | Filename match — only accepted on a strong, unambiguous match. |
-| remote URL only | 2 | The Notion cover is an https URL and no local file matches. |
+| remote URL only | 2 | The the source tool cover is an https URL and no local file matches. |
 
 Generic download filenames (`images.jpg`, `download_(1).jpeg`, …) are excluded
 from filename matching entirely — they carry no information about which film
@@ -225,7 +232,7 @@ rather than resolving them silently:
 
 | Finding | How it is handled |
 |---|---|
-| Cover is a remote URL with no local asset | The Notion URL is stored and rendered. Nothing is downloaded. |
+| Cover is a remote URL with no local asset | The the source tool URL is stored and rendered. Nothing is downloaded. |
 | No byte-identical curated thumbnail | The export's own cover file is used. |
 | Thumbnail matching no record | Left unassigned and reported. No movie is invented for it. |
 | Geotagged photos on a record not marked as watched in a cinema | **The recorded value wins.** No cinema visit is created; the conflict is reported instead. |

@@ -1,7 +1,7 @@
 /**
  * Venue derivation from photo GPS.
  *
- * The Notion export has no cinema names — only a `Theatre` yes/no checkbox. The
+ * The imported collection has no cinema names — only a `Theatre` yes/no checkbox. The
  * photos attached as "Movie Shots" during theatre visits do carry GPS EXIF, and
  * that is the only evidence in the source data that distinguishes one cinema
  * from another. Shots within `CLUSTER_RADIUS_M` of each other are treated as the

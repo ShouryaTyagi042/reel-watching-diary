@@ -6,7 +6,9 @@ import { Stars } from "@/components/Stars";
 import { CoordPlate, MapLink } from "@/components/CoordPlate";
 import { PersonChip } from "@/components/Avatar";
 import { ThumbnailUpload } from "@/components/ThumbnailUpload";
-import { getMovieBySlug } from "@/lib/queries";
+import { EditEntryForm } from "@/components/EditEntryForm";
+import { ShotUpload } from "@/components/ShotUpload";
+import { getMovieBySlug, getFilterOptions } from "@/lib/queries";
 import { formatDate, formatDateTime } from "@/lib/format";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
@@ -109,6 +111,26 @@ export default async function MoviePage({ params }: { params: Promise<{ slug: st
             )}
             <Field label="Seen in a cinema">{movie.watchedInTheatre ? "Yes" : "No"}</Field>
           </dl>
+
+          <div className="mt-8">
+            <EditEntryForm
+              knownGenres={getFilterOptions().genres.map((g) => g.name)}
+              entry={{
+                slug: movie.slug,
+                title: movie.title,
+                year: movie.year,
+                format: movie.format,
+                status: movie.status,
+                rating: movie.ratingValue,
+                seriesName: movie.seriesName,
+                watchedInTheatre: movie.watchedInTheatre,
+                watchedOn: movie.createdTime,
+                genres: genres.map((g) => g.name),
+                cast: cast.map((c) => c.name),
+                directors: directors.map((d) => d.name),
+              }}
+            />
+          </div>
         </div>
       </header>
 
@@ -153,33 +175,20 @@ export default async function MoviePage({ params }: { params: Promise<{ slug: st
       )}
 
       {/* ---- Photos from the screening ---- */}
-      {shots.length > 0 && (
-        <Block note={`${shots.length} ${shots.length === 1 ? "photo" : "photos"}`} title="Shots from the night">
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {shots.map((sh) => (
-              <figure key={sh.id} className="well">
-                <div className="relative aspect-[4/3]">
-                  <Image
-                    src={sh.path}
-                    alt={`Photo taken during ${movie.title}${sh.capturedAt ? ` on ${formatDate(sh.capturedAt)}` : ""}`}
-                    fill
-                    sizes="(max-width: 640px) 45vw, 260px"
- className="object-cover"
-                  />
-                </div>
-                <figcaption className="data border-t border-line px-2.5 py-2 text-[10px] text-faint">
-                  {formatDateTime(sh.capturedAt) ?? sh.sourceName}
-                  {sh.lat != null && sh.lng != null && (
-                    <span className="block text-[10px] text-faint/80">
-                      {sh.lat.toFixed(4)}, {sh.lng.toFixed(4)}
-                    </span>
-                  )}
-                </figcaption>
-              </figure>
-            ))}
-          </div>
-        </Block>
-      )}
+      <Block
+        title="Shots from the night"
+        note={shots.length ? `${shots.length} ${shots.length === 1 ? "photo" : "photos"}` : "Add a photo to place the cinema"}
+      >
+        <ShotUpload
+          slug={movie.slug}
+          title={movie.title}
+          watchedInTheatre={movie.watchedInTheatre}
+          shots={shots.map((sh) => ({
+            id: sh.id, path: sh.path, capturedAt: sh.capturedAt,
+            lat: sh.lat, lng: sh.lng, sourceName: sh.sourceName,
+          }))}
+        />
+      </Block>
 
       {/* ---- Quotes ---- */}
       {quotes.length > 0 && (
@@ -248,11 +257,11 @@ export default async function MoviePage({ params }: { params: Promise<{ slug: st
         <dl className="grid gap-x-8 gap-y-3 border-t border-line px-5 py-5 sm:grid-cols-2">
           <Field label="Record id"><code className="data text-[11px]">{movie.id}</code></Field>
           <Field label="Added">
-            {movie.origin === "app" ? "Created in the app" : "Loaded by the importer"}
+            {movie.sourcePath ? "Seeded from an imported collection" : "Created here"}
           </Field>
-          {movie.notionPath && (
+          {movie.sourcePath && (
             <Field label="Source file">
-              <code className="data text-[11px] break-all">{movie.notionPath}</code>
+              <code className="data text-[11px] break-all">{movie.sourcePath}</code>
             </Field>
           )}
           {movie.coverRaw && (

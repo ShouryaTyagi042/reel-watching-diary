@@ -4,7 +4,7 @@ import { thumbnailStem } from "./thumbnail-name";
 /**
  * Where the user's source assets live.
  *
- * The app reads the Notion export and the curated thumbnails from folders that
+ * The app reads an imported collection and the curated thumbnails from folders that
  * sit alongside it — the same ones the importer uses. Thumbnails added through
  * the UI are written back into `Movies Thumbnails/` so a later `npm run import`
  * picks them up exactly as if they had always been there.
@@ -14,6 +14,8 @@ import { thumbnailStem } from "./thumbnail-name";
 export const ASSETS_DIR = path.resolve(process.cwd(), process.env.ASSETS_DIR ?? "../src");
 export const EXPORT_DIR = path.resolve(process.cwd(), process.env.EXPORT_DIR ?? "../d");
 export const THUMBS_DIR = path.join(ASSETS_DIR, "Movies Thumbnails");
+/** Photos taken during a screening, one folder per entry. */
+export const SHOTS_DIR = path.join(ASSETS_DIR, "Movie Shots");
 export const PUBLIC_DIR = path.join(process.cwd(), "public");
 
 

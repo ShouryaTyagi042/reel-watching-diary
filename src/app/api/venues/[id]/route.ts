@@ -6,7 +6,7 @@ import * as s from "@/db/schema";
 /**
  * Name a venue.
  *
- * The Notion export has no cinema names — only coordinates recovered from photo
+ * The imported collection has no cinema names — only coordinates recovered from photo
  * EXIF — so the name is the one piece of cinema data that comes from the user
  * rather than the import. It is stored on the venue row and the importer leaves
  * it alone on subsequent runs.
