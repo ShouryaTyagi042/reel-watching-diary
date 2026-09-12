@@ -19,18 +19,17 @@ export default function CinemasPage() {
   return (
     <>
       <header className="pt-10 sm:pt-14">
-        <div className="eyebrow">Where the watching happened</div>
-        <h1 className="mt-2 font-display text-[clamp(2rem,5vw,3.25rem)] font-light leading-none text-paper">
+        <h1 className="mt-2 display text-[clamp(2rem,5vw,3.25rem)]">
           Cinemas
         </h1>
         <p className="mt-5 max-w-2xl text-[14px] leading-relaxed text-dim">
           An entry records that you watched something in a cinema, but not which one. Each cinema
-          below was placed from the GPS in the photos taken during the visit — that position is what
+          below was placed from the GPS in the photos taken during the visit, that position is what
           tells one cinema from another. Names are yours to fill in, and they are never overwritten.
         </p>
       </header>
 
-      <dl className="mt-9 grid grid-cols-2 gap-px border border-edge bg-edge/70 sm:grid-cols-4">
+      <dl className="mt-9 grid grid-cols-2 gap-px border border-line bg-line sm:grid-cols-4">
         <Stat label="Cinema visits" value={stats.cinemaVisits} />
         <Stat label="Cinemas placed" value={venues.length} />
         <Stat label="Visits with a venue" value={placed} />
@@ -39,7 +38,7 @@ export default function CinemasPage() {
 
       {venues.length === 0 && unplaced.length === 0 ? (
         <div className="py-24 text-center">
-          <h2 className="font-display text-2xl text-paper">No cinema visits yet</h2>
+          <h2 className="display text-2xl">No cinema visits yet</h2>
           <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-dim">
             No entry is marked as watched in a cinema yet. Mark one, attach a photo from the
             screening, and the cinema appears here.
@@ -49,51 +48,50 @@ export default function CinemasPage() {
         <>
           {venues.length > 0 && (
             <section className="mt-14">
-              <div className="mb-5 flex items-end justify-between border-b border-edge/60 pb-3">
+              <div className="mb-5 flex items-end justify-between border-b border-line pb-3">
                 <div>
-                  <div className="eyebrow mb-1.5">Most visited first</div>
-                  <h2 className="font-display text-2xl leading-none text-paper">Placed cinemas</h2>
+                  <h2 className="display text-[26px]">Placed cinemas</h2>
+                  <p className="mt-1.5 text-[13px] text-faint">Most visited first.</p>
                 </div>
               </div>
 
               <ul className="grid gap-5 lg:grid-cols-2">
-                {venues.map((v, i) => (
+                {venues.map((v) => (
                   <li key={v.id}>
                     <Link
                       href={`/cinemas/${v.slug}`}
-                      className="group flex gap-5 border border-edge bg-velvet/30 p-5 transition-colors hover:border-rose/60"
+ className="group flex gap-5 border border-line bg-surface p-5 transition-colors hover:border-accent"
                     >
                       <div className="w-[76px] shrink-0">
                         {v.lastMoviePoster ? (
                           <Poster title={v.lastMovieTitle ?? "Last film"} path={v.lastMoviePoster} sizes="76px" />
                         ) : (
-                          <div className="frame aspect-[2/3]" />
+                          <div className="well aspect-[2/3]" />
                         )}
                       </div>
 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-baseline gap-2">
-                          <span className="plate text-[11px] text-faint">{String(i + 1).padStart(2, "0")}</span>
                           <h3
-                            className={`truncate font-display text-xl leading-tight transition-colors group-hover:text-sconce ${
-                              v.name ? "text-paper" : "italic text-dim"
+ className={`truncate display text-xl leading-tight transition-colors group-hover:text-accent ${
+                              v.name ? "text-text" : "italic text-dim"
                             }`}
                           >
                             {v.name ?? "Unnamed cinema"}
                           </h3>
                         </div>
 
-                        <div className="plate mt-1.5 text-[11px] text-faint">
+                        <div className="data mt-1.5 text-[11px] text-faint">
                           {v.lat != null && v.lng != null
                             ? `${v.lat.toFixed(4)}° N  ${v.lng.toFixed(4)}° E`
                             : "no position recorded"}
                         </div>
 
                         <div className="mt-4 flex items-baseline gap-2">
-                          <span className="font-display text-3xl leading-none text-paper">{v.visits}</span>
-                          <span className="eyebrow">{v.visits === 1 ? "visit" : "visits"}</span>
+                          <span className="display text-3xl leading-none text-text">{v.visits}</span>
+                          <span className="label">{v.visits === 1 ? "visit" : "visits"}</span>
                           {v.averageRating !== null && (
-                            <span className="plate ml-auto text-[11px] text-sconce">
+                            <span className="data ml-auto text-[11px] text-accent">
                               avg {v.averageRating.toFixed(1)}★
                             </span>
                           )}
@@ -101,8 +99,8 @@ export default function CinemasPage() {
 
                         {v.lastMovieTitle && (
                           <p className="mt-3 truncate text-[13px] text-dim">
-                            Last: <span className="text-paper">{v.lastMovieTitle}</span>
-                            {v.lastVisitAt && <span className="text-faint"> · {formatDate(v.lastVisitAt)}</span>}
+                            Last: <span className="text-text">{v.lastMovieTitle}</span>
+                            {v.lastVisitAt && <span className="text-faint">, {formatDate(v.lastVisitAt)}</span>}
                           </p>
                         )}
                       </div>
@@ -115,18 +113,18 @@ export default function CinemasPage() {
 
           {unplaced.length > 0 && (
             <section className="mt-16">
-              <div className="mb-5 border-b border-edge/60 pb-3">
-                <div className="eyebrow mb-1.5">{pluralize(unplaced.length, "visit")}</div>
-                <h2 className="font-display text-2xl leading-none text-paper">Cinema not identified</h2>
+              <div className="mb-5 border-b border-line pb-3">
+                <h2 className="display text-[26px]">Cinema not identified</h2>
+                <p className="mt-1.5 text-[13px] text-faint">{pluralize(unplaced.length, "visit")}.</p>
               </div>
               <p className="mb-7 max-w-2xl text-[14px] leading-relaxed text-dim">
-                These are marked as watched in a cinema, but no geotagged photo is attached — so
+                These are marked as watched in a cinema, but no geotagged photo is attached, so
                 there is nothing to say which cinema it was. They are counted as visits and left
                 unplaced rather than guessed at.
               </p>
               <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
                 {unplaced.map((m, i) => (
-                  <MovieCard key={m.id} movie={m} index={i} />
+                <MovieCard key={m.id} movie={m} />
                 ))}
               </div>
             </section>
@@ -139,9 +137,9 @@ export default function CinemasPage() {
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="bg-ink px-4 py-5">
-      <dd className="font-display text-[30px] leading-none text-paper">{value}</dd>
-      <dt className="eyebrow mt-2.5">{label}</dt>
+    <div className="bg-bg px-4 py-5">
+      <dd className="display text-[30px] leading-none text-text">{value}</dd>
+      <dt className="label mt-2.5">{label}</dt>
     </div>
   );
 }

@@ -7,15 +7,15 @@ import type { ReactNode } from "react";
  */
 export function Ledger({ items }: { items: LedgerItem[] }) {
   return (
-    <dl className="grid grid-cols-2 gap-px border border-edge bg-edge/70 sm:grid-cols-3 lg:grid-cols-6">
+    <dl className="grid grid-cols-2 gap-px border border-line bg-line sm:grid-cols-3 lg:grid-cols-6">
       {items.map((it) => {
         const body = (
-          <div className="h-full bg-ink px-4 py-5 transition-colors group-hover:bg-velvet/60">
-            <dd className="font-display text-[30px] leading-none text-paper">
+          <div className="h-full bg-bg px-4 py-5 transition-colors group-hover:bg-surface">
+            <dd className="display text-[30px] leading-none text-text">
               {it.value}
               {it.suffix && <span className="ml-1 text-base text-faint">{it.suffix}</span>}
             </dd>
-            <dt className="eyebrow mt-2.5">{it.label}</dt>
+            <dt className="label mt-2.5">{it.label}</dt>
             {it.note && <p className="mt-1 text-[11px] leading-snug text-faint">{it.note}</p>}
           </div>
         );

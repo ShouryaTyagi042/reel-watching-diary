@@ -12,18 +12,17 @@ export default function AddPage() {
   return (
     <>
       <nav className="pt-8">
-        <Link href="/library" className="eyebrow transition-colors hover:text-sconce">
+        <Link href="/library" className="label transition-colors hover:text-accent">
           ← Library
         </Link>
       </nav>
 
       <header className="mt-6">
-        <div className="eyebrow">New entry</div>
-        <h1 className="mt-2 font-display text-[clamp(2rem,5vw,3.25rem)] font-light leading-none text-paper">
+        <h1 className="mt-2 display text-[clamp(2rem,5vw,3.25rem)]">
           Add to the diary
         </h1>
         <p className="mt-4 max-w-2xl text-[14px] leading-relaxed text-dim">
-          Only a title is required — everything else can be filled in later. Artwork is saved into
+          Only a title is required, everything else can be filled in later. Artwork is saved into
           your thumbnails folder using the diary’s naming convention, so it sits alongside the rest
           of your collection.
         </p>

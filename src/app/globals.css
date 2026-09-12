@@ -1,109 +1,165 @@
 @import "tailwindcss";
 
 /*
-  Palette: a cinema auditorium.
-  Plum-black walls, oxblood velvet seats, amber sconces on the aisle, and the
-  cool blue-white of the projected image. The two accents are semantic, not
-  decorative: amber marks ratings (house lights), rose marks cinema visits.
+  Reel design tokens.
+
+  Direction: the projection booth. Monochrome neutrals carrying a single
+  saturated accent, the colour of a tungsten lamp burning through film. One
+  accent, locked across every surface. No second accent anywhere.
+
+  Both themes are first-class. Every text tone clears WCAG AA (4.5:1) against
+  both the page and raised surfaces, verified numerically rather than by eye:
+
+              light           dark
+    text      18.07           17.88
+    dim        6.58            8.26
+    faint      4.94            5.69
+    accent     5.11            6.35
+    on-accent  5.29            6.39   (button label against the accent fill)
 */
-@theme {
-  --color-ink: #16101a;
-  --color-ink-2: #1d1520;
-  --color-velvet: #241826;
-  --color-edge: #3a2839;
-  --color-edge-2: #4d3549;
 
-  /*
-    The text ramp is spaced by contrast, not by eye: every step clears WCAG AA
-    (4.5:1) against both --color-ink and --color-velvet, because the recessed
-    tones carry real content — section labels, coordinates, dates — not decoration.
-    paper 15.97 · dim 7.60 · faint 5.04 (on ink)
-  */
-  --color-paper: #f3ece5;
-  --color-dim: #b0a0b4;
-  --color-faint: #907f95;
+/* ---------------------------------------------------------------- light -- */
+:root {
+  --bg: #fbfbfa;
+  --surface: #ffffff;
+  --surface-2: #f4f4f2;
+  --line: #e4e4e1;
+  --line-strong: #cdcdc8;
+  --text: #121214;
+  --dim: #5b5b58;
+  --faint: #6e6e6b;
+  --accent: #c9331a;
+  --accent-quiet: #f3ded9;
+  --on-accent: #ffffff;
+  --shadow: 220 5% 10%;
 
-  /* The unfilled half of the rating meter: a visible track, well clear of the
-     amber so it never reads as a lit star. The value itself is announced in text. */
-  --color-star-off: #6a4b66;
-
-  --color-sconce: #e8b04b;
-  --color-sconce-dim: #8a6a2f;
-  --color-rose: #d4657c;
-  --color-screen: #a8c6e4;
-
-  --font-display: var(--font-fraunces), Georgia, "Times New Roman", serif;
-  --font-sans: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-space-mono), ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: light;
 }
 
-:root {
+/* ----------------------------------------------------------------- dark -- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b0b0c;
+    --surface: #141417;
+    --surface-2: #1b1b1f;
+    --line: #27272b;
+    --line-strong: #3b3b41;
+    --text: #f4f4f3;
+    --dim: #a8a8a6;
+    --faint: #8a8a88;
+    --accent: #ff5a3c;
+    --accent-quiet: #2a1310;
+    --on-accent: #160603;
+    --shadow: 0 0% 0%;
+
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #0b0b0c;
+  --surface: #141417;
+  --surface-2: #1b1b1f;
+  --line: #27272b;
+  --line-strong: #3b3b41;
+  --text: #f4f4f3;
+  --dim: #a8a8a6;
+  --faint: #8a8a88;
+  --accent: #ff5a3c;
+  --accent-quiet: #2a1310;
+  --on-accent: #160603;
+  --shadow: 0 0% 0%;
+
   color-scheme: dark;
 }
 
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-text: var(--text);
+  --color-dim: var(--dim);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-quiet: var(--accent-quiet);
+  --color-on-accent: var(--on-accent);
+
+  --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+/* --------------------------------------------------------------- base ---- */
 html {
   scroll-behavior: smooth;
 }
 
 body {
-  background-color: var(--color-ink);
-  color: var(--color-paper);
+  background-color: var(--bg);
+  color: var(--text);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
-  /* A faint pool of warm light near the top, like a sconce above the aisle. */
-  background-image:
-    radial-gradient(900px 480px at 18% -8%, rgba(232, 176, 75, 0.07), transparent 62%),
-    radial-gradient(760px 420px at 88% 4%, rgba(168, 198, 228, 0.05), transparent 66%);
-  background-attachment: fixed;
+  text-rendering: optimizeLegibility;
 }
 
 ::selection {
-  background: var(--color-sconce);
-  color: var(--color-ink);
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
-/* Keyboard focus is always visible, and always in the house-light amber. */
+/* Focus is always visible, always in the accent. */
 :focus-visible {
-  outline: 2px solid var(--color-sconce);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
-  border-radius: 2px;
 }
 
-/* --- utilities ---------------------------------------------------------- */
-@utility eyebrow {
+/*
+  Shape lock: everything is square. The single documented exception is a face,
+  which is a circle. No other radius appears anywhere in the project.
+*/
+
+/* ---------------------------------------------------------- utilities ---- */
+@utility label {
   font-family: var(--font-mono);
   font-size: 0.6875rem;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--color-faint);
+  color: var(--faint);
 }
 
-@utility plate {
+@utility data {
   font-family: var(--font-mono);
   font-size: 0.75rem;
-  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
 }
 
-@utility rule-soft {
-  border-color: color-mix(in oklab, var(--color-edge) 70%, transparent);
-}
-
-/* Poster frames: square corners, hard edges — a contact sheet, not an app. */
-@utility frame {
+/* A poster or photo sits in a flat well, not on a floating card. */
+@utility well {
   position: relative;
   overflow: hidden;
-  background: var(--color-velvet);
-  box-shadow: inset 0 0 0 1px rgba(243, 236, 229, 0.07);
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--line);
 }
 
-/* --- motion -------------------------------------------------------------- */
-@keyframes rise {
-  from { opacity: 0; transform: translateY(10px); }
+/* Display type runs tight and heavy. Hierarchy comes from weight, not scale. */
+@utility display {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 0.95;
+}
+
+/* --------------------------------------------------------------- motion -- */
+/*
+  Motion is choreographed in Motion (motion/react) inside client leaves.
+  CSS here covers only the first paint, before hydration.
+*/
+@keyframes reel-in {
+  from { opacity: 0; transform: translate3d(0, 12px, 0); }
   to   { opacity: 1; transform: none; }
-}
-
-.rise {
-  animation: rise 0.5s cubic-bezier(0.2, 0.7, 0.3, 1) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -112,8 +168,15 @@ body {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
-/* Hide the native clear button on search inputs; we render our own. */
+/* Theme swaps should not flash a cross-fade on every element. */
+@media (prefers-reduced-motion: no-preference) {
+  body {
+    transition: background-color 220ms ease, color 220ms ease;
+  }
+}
+
 input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; }

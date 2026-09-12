@@ -6,18 +6,18 @@ import Link from "next/link";
  *
  * Headshots come from `src/Actors` and `src/Directors`, matched by name during
  * import. When there is no photo for someone we draw their initials rather than
- * borrowing a stock face — the same rule the posters follow.
+ * borrowing a stock face, the same rule the posters follow.
  */
 export function Avatar({
   name,
   photoPath,
   size = 96,
-  className = "",
+ className = "",
 }: {
   name: string;
   photoPath?: string | null;
   size?: number;
-  className?: string;
+ className?: string;
 }) {
   const initials = name
     .split(/\s+/)
@@ -29,7 +29,7 @@ export function Avatar({
 
   return (
     <div
-      className={`frame relative aspect-square overflow-hidden rounded-full ${className}`}
+ className={`well relative aspect-square overflow-hidden rounded-full ${className}`}
       style={{ maxWidth: size }}
     >
       {photoPath ? (
@@ -38,11 +38,11 @@ export function Avatar({
           alt={name}
           fill
           sizes={`${size}px`}
-          className="object-cover transition-transform duration-300 group-hover:scale-105"
+ className="object-cover transition-transform duration-300 group-hover:scale-105"
         />
       ) : (
         <span
-          className="flex h-full w-full items-center justify-center font-display text-faint"
+ className="flex h-full w-full items-center justify-center display text-faint"
           style={{ fontSize: Math.max(13, size * 0.3) }}
           aria-hidden
         >
@@ -70,10 +70,10 @@ export function PersonChip({
   return (
     <Link href={`/people/${slug}`} className="group block text-center">
       <Avatar name={name} photoPath={photoPath} size={size} className="mx-auto w-full" />
-      <span className="mt-2.5 block text-[12px] leading-snug text-dim transition-colors group-hover:text-sconce">
+      <span className="mt-2.5 block text-[12px] leading-snug text-dim transition-colors group-hover:text-accent">
         {name}
       </span>
-      {role && <span className="eyebrow mt-0.5 block text-[9px]">{role}</span>}
+      {role && <span className="label mt-0.5 block text-[9px]">{role}</span>}
     </Link>
   );
 }

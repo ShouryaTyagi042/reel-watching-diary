@@ -25,17 +25,16 @@ export default function PeoplePage() {
   return (
     <>
       <header className="pt-10 sm:pt-14">
-        <div className="eyebrow">Cast and directors</div>
-        <h1 className="mt-2 font-display text-[clamp(2rem,5vw,3.25rem)] font-light leading-none text-paper">
+        <h1 className="mt-2 display text-[clamp(2rem,5vw,3.25rem)]">
           People
         </h1>
         <p className="mt-5 max-w-2xl text-[14px] leading-relaxed text-dim">
           Everyone credited across the diary. Headshots are matched to people by name from your
-          assets folder — anyone without one is drawn with their initials rather than a stand-in face.
+          assets folder, anyone without one is drawn with their initials rather than a stand-in face.
         </p>
       </header>
 
-      <dl className="mt-9 grid grid-cols-2 gap-px border border-edge bg-edge/70 sm:grid-cols-4">
+      <dl className="mt-9 grid grid-cols-2 gap-px border border-line bg-line sm:grid-cols-4">
         <Stat label="Credited" value={people.length} />
         <Stat label="Directors" value={directors.length} />
         <Stat label="Seen more than once" value={recurringActors.length} />
@@ -43,19 +42,19 @@ export default function PeoplePage() {
       </dl>
 
       {directors.length > 0 && (
-        <Group title="Directors" eyebrow={pluralize(directors.length, "director")}>
+        <Group title="Directors" label={pluralize(directors.length, "director")}>
           {directors.map((p) => <PersonTile key={p.slug} person={p} />)}
         </Group>
       )}
 
       {recurringActors.length > 0 && (
-        <Group title="Recurring faces" eyebrow="In more than one entry">
+        <Group title="Recurring faces" label="In more than one entry">
           {recurringActors.map((p) => <PersonTile key={p.slug} person={p} />)}
         </Group>
       )}
 
       {singles.length > 0 && (
-        <Group title="Everyone else" eyebrow={`${singles.length} with a single credit`}>
+        <Group title="Everyone else" label={`${singles.length} with a single credit`}>
           {singles.map((p) => <PersonTile key={p.slug} person={p} />)}
         </Group>
       )}
@@ -63,7 +62,7 @@ export default function PeoplePage() {
       {uncredited.length > 0 && (
         <Group
           title="No film attached"
-          eyebrow={`${uncredited.length} in the Casts database`}
+          label={`${uncredited.length} in the Casts database`}
         >
           {uncredited.map((p) => <PersonTile key={p.slug} person={p} />)}
         </Group>
@@ -75,7 +74,7 @@ export default function PeoplePage() {
 function PersonTile({ person }: { person: PersonSummary }) {
   const credits =
     person.directed > 0 && person.actedIn > 0
-      ? `${person.directed} directed · ${person.actedIn} acted`
+      ? `${person.directed} directed, ${person.actedIn} acted`
       : person.directed > 0
         ? pluralize(person.directed, "film")
         : person.actedIn > 0
@@ -86,21 +85,20 @@ function PersonTile({ person }: { person: PersonSummary }) {
     <li>
       <Link href={`/people/${person.slug}`} className="group block text-center">
         <Avatar name={person.name} photoPath={person.photoPath} size={112} className="mx-auto w-full" />
-        <span className="mt-3 block text-[13px] leading-snug text-paper transition-colors group-hover:text-sconce">
+        <span className="mt-3 block text-[13px] leading-snug text-text transition-colors group-hover:text-accent">
           {person.name}
         </span>
-        <span className="plate mt-1 block text-[10px] text-faint">{credits}</span>
+        <span className="data mt-1 block text-[10px] text-faint">{credits}</span>
       </Link>
     </li>
   );
 }
 
-function Group({ title, eyebrow, children }: { title: string; eyebrow: string; children: React.ReactNode }) {
+function Group({ title, label, children }: { title: string; label: string; children: React.ReactNode }) {
   return (
     <section className="mt-14">
-      <div className="mb-6 border-b border-edge/60 pb-3">
-        <div className="eyebrow mb-1.5">{eyebrow}</div>
-        <h2 className="font-display text-2xl leading-none text-paper">{title}</h2>
+      <div className="mb-6 border-b border-line pb-3">
+        <h2 className="display text-[26px]">{title}</h2>
       </div>
       <ul className="grid grid-cols-3 gap-x-4 gap-y-8 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
         {children}
@@ -111,9 +109,9 @@ function Group({ title, eyebrow, children }: { title: string; eyebrow: string; c
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="bg-ink px-4 py-5">
-      <dd className="font-display text-[30px] leading-none text-paper">{value}</dd>
-      <dt className="eyebrow mt-2.5">{label}</dt>
+    <div className="bg-bg px-4 py-5">
+      <dd className="display text-[30px] leading-none text-text">{value}</dd>
+      <dt className="label mt-2.5">{label}</dt>
     </div>
   );
 }

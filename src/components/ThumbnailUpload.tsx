@@ -9,7 +9,7 @@ import { thumbnailStem } from "@/lib/thumbnail-name";
  * Attach artwork to an entry.
  *
  * The file is saved into your thumbnails folder under the diary's naming
- * convention — the title in lower snake_case, e.g. `mirzapur_the_movie.jpg` —
+ * convention, the title in lower snake_case, e.g. `mirzapur_the_movie.jpg` -
  * so it sits alongside the ones already there and is picked up automatically by
  * any later import.
  */
@@ -44,7 +44,7 @@ export function ThumbnailUpload({
     setSaved(null);
 
     if (!file.type.startsWith("image/")) {
-      setError("Pick an image file — JPEG, PNG, WebP, AVIF or GIF.");
+      setError("Pick an image file, JPEG, PNG, WebP, AVIF or GIF.");
       return;
     }
     if (file.size > 8 * 1024 * 1024) {
@@ -77,25 +77,25 @@ export function ThumbnailUpload({
   const shown = preview ?? currentPoster ?? null;
 
   return (
-    <div className={compact ? "" : "border border-edge bg-velvet/30 p-5"}>
+    <div className={compact ? "" : "border border-line bg-surface p-5"}>
       <div className="flex items-start gap-4">
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={busy}
           aria-label={shown ? `Replace the artwork for ${title}` : `Add artwork for ${title}`}
-          className="group relative aspect-[2/3] w-[84px] shrink-0 overflow-hidden border border-dashed border-edge-2 bg-velvet transition-colors hover:border-sconce focus-visible:border-sconce disabled:opacity-60"
+ className="group relative aspect-[2/3] w-[84px] shrink-0 overflow-hidden border border-dashed border-line-strong bg-surface transition-colors hover:border-accent focus-visible:border-accent disabled:opacity-60"
         >
           {shown ? (
             <Image src={shown} alt="" fill sizes="84px" className="object-cover" />
           ) : (
-            <span className="flex h-full items-center justify-center text-2xl text-faint transition-colors group-hover:text-sconce">
+            <span className="flex h-full items-center justify-center text-2xl text-faint transition-colors group-hover:text-accent">
               +
             </span>
           )}
           {busy && (
-            <span className="absolute inset-0 flex items-center justify-center bg-ink/70">
-              <span className="plate text-[10px] text-sconce">saving…</span>
+            <span className="absolute inset-0 flex items-center justify-center bg-bg/70">
+              <span className="data text-[10px] text-accent">saving…</span>
             </span>
           )}
         </button>
@@ -105,31 +105,31 @@ export function ThumbnailUpload({
             type="button"
             onClick={() => inputRef.current?.click()}
             disabled={busy}
-            className="border border-edge px-3 py-1.5 text-[13px] text-dim transition-colors hover:border-sconce hover:text-sconce disabled:opacity-50"
+ className="border border-line px-3 py-1.5 text-[13px] text-dim transition-colors hover:border-accent hover:text-accent disabled:opacity-50"
           >
             {busy ? "Saving…" : shown ? "Replace artwork" : "Choose an image"}
           </button>
 
-          <p className="plate mt-2.5 text-[10px] leading-relaxed text-faint">
+          <p className="data mt-2.5 text-[10px] leading-relaxed text-faint">
             {knownName ? (
               <>
-                In your thumbnails folder as <span className="text-screen">{knownName}</span>
+                In your thumbnails folder as <span className="text-dim">{knownName}</span>
               </>
             ) : (
               <>
                 Saves to your thumbnails folder as{" "}
-                <span className="text-screen">{stem}</span>, keeping the image’s own extension
+                <span className="text-dim">{stem}</span>, keeping the image’s own extension
               </>
             )}
           </p>
 
           {saved && (
-            <p role="status" className="mt-2 text-[12px] text-sconce">
+            <p role="status" className="mt-2 text-[12px] text-accent">
               Saved as {saved}.
             </p>
           )}
           {error && (
-            <p role="alert" className="mt-2 text-[12px] text-rose">
+            <p role="alert" className="mt-2 text-[12px] text-accent">
               {error}
             </p>
           )}
@@ -140,7 +140,7 @@ export function ThumbnailUpload({
         ref={inputRef}
         type="file"
         accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
-        className="sr-only"
+ className="sr-only"
         onChange={(e) => {
           const f = e.target.files?.[0];
           if (f) upload(f);

@@ -102,11 +102,11 @@ export function AddEntryForm({ knownGenres }: { knownGenres: string[] }) {
     <form onSubmit={submit} className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,220px)_1fr]">
       {/* ---- Artwork ---- */}
       <div>
-        <span className="eyebrow mb-3 block">Artwork</span>
+        <span className="label mb-3 block">Artwork</span>
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          className="group relative block aspect-[2/3] w-full overflow-hidden border border-dashed border-edge-2 bg-velvet transition-colors hover:border-sconce focus-visible:border-sconce"
+ className="group relative block aspect-[2/3] w-full overflow-hidden border border-dashed border-line-strong bg-surface transition-colors hover:border-accent focus-visible:border-accent"
           aria-label="Choose artwork for this entry"
         >
           {posterPreview ? (
@@ -114,7 +114,7 @@ export function AddEntryForm({ knownGenres }: { knownGenres: string[] }) {
             <img src={posterPreview} alt="" className="h-full w-full object-cover" />
           ) : (
             <span className="flex h-full flex-col items-center justify-center gap-2 px-4 text-center">
-              <span className="text-3xl text-faint transition-colors group-hover:text-sconce">+</span>
+              <span className="text-3xl text-faint transition-colors group-hover:text-accent">+</span>
               <span className="text-[12px] leading-snug text-faint">Choose an image</span>
             </span>
           )}
@@ -123,7 +123,7 @@ export function AddEntryForm({ knownGenres }: { knownGenres: string[] }) {
           ref={fileRef}
           type="file"
           accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
-          className="sr-only"
+ className="sr-only"
           onChange={(e) => {
             const f = e.target.files?.[0] ?? null;
             if (f && f.size > 8 * 1024 * 1024) {
@@ -135,8 +135,8 @@ export function AddEntryForm({ knownGenres }: { knownGenres: string[] }) {
           }}
         />
         {title.trim() && (
-          <p className="plate mt-2.5 text-[10px] leading-relaxed text-faint">
-            Saves as <span className="text-screen">{thumbnailStem(title.trim())}</span> in your
+          <p className="data mt-2.5 text-[10px] leading-relaxed text-faint">
+            Saves as <span className="text-dim">{thumbnailStem(title.trim())}</span> in your
             thumbnails folder, keeping the image’s own extension
           </p>
         )}
@@ -144,7 +144,7 @@ export function AddEntryForm({ knownGenres }: { knownGenres: string[] }) {
           <button
             type="button"
             onClick={() => { setPoster(null); setPosterPreview(null); }}
-            className="mt-2 text-[12px] text-rose underline decoration-rose/40 underline-offset-4"
+ className="mt-2 text-[12px] text-accent underline decoration-accent underline-offset-4"
           >
             Remove image
           </button>
@@ -161,7 +161,7 @@ export function AddEntryForm({ knownGenres }: { knownGenres: string[] }) {
             maxLength={300}
             autoFocus
             placeholder="What did you watch?"
-            className={inputCls}
+ className={inputCls}
           />
         </Field>
 
@@ -172,20 +172,20 @@ export function AddEntryForm({ knownGenres }: { knownGenres: string[] }) {
               onChange={(e) => setYear(e.target.value.replace(/[^0-9]/g, "").slice(0, 4))}
               inputMode="numeric"
               placeholder="2026"
-              className={inputCls}
+ className={inputCls}
             />
           </Field>
           <Field label="Format">
             <select value={format} onChange={(e) => setFormat(e.target.value)} className={inputCls}>
               {FORMATS.map((f) => (
-                <option key={f} value={f} className="bg-ink text-paper">{f}</option>
+                <option key={f} value={f} className="bg-bg text-text">{f}</option>
               ))}
             </select>
           </Field>
           <Field label="Status">
             <select value={status} onChange={(e) => setStatus(e.target.value)} className={inputCls}>
               {STATUSES.map((v) => (
-                <option key={v} value={v} className="bg-ink text-paper">{v}</option>
+                <option key={v} value={v} className="bg-bg text-text">{v}</option>
               ))}
             </select>
           </Field>
@@ -194,9 +194,9 @@ export function AddEntryForm({ knownGenres }: { knownGenres: string[] }) {
         <div className="grid gap-6 sm:grid-cols-2">
           <Field label="Rating">
             <select value={rating} onChange={(e) => setRating(e.target.value)} className={inputCls}>
-              <option value="" className="bg-ink text-paper">Not rated</option>
+              <option value="" className="bg-bg text-text">Not rated</option>
               {RATINGS.map((r) => (
-                <option key={r.value} value={r.value} className="bg-ink text-paper">
+                <option key={r.value} value={r.value} className="bg-bg text-text">
                   {r.label}  ({r.value})
                 </option>
               ))}
@@ -207,7 +207,7 @@ export function AddEntryForm({ knownGenres }: { knownGenres: string[] }) {
               type="date"
               value={watchedOn}
               onChange={(e) => setWatchedOn(e.target.value)}
-              className={inputCls}
+ className={inputCls}
             />
           </Field>
         </div>
@@ -222,10 +222,10 @@ export function AddEntryForm({ knownGenres }: { knownGenres: string[] }) {
                     type="button"
                     onClick={() => toggleGenre(g)}
                     aria-pressed={on}
-                    className={`border px-2.5 py-1 text-[12px] transition-colors ${
+ className={`border px-2.5 py-1 text-[12px] transition-colors ${
                       on
-                        ? "border-sconce bg-sconce/10 text-sconce"
-                        : "border-edge text-dim hover:border-edge-2 hover:text-paper"
+                        ? "border-accent bg-accent-quiet text-accent"
+                        : "border-line text-dim hover:border-line-strong hover:text-text"
                     }`}
                   >
                     {g}
@@ -242,7 +242,7 @@ export function AddEntryForm({ knownGenres }: { knownGenres: string[] }) {
               value={directors}
               onChange={(e) => setDirectors(e.target.value)}
               placeholder="Christopher Nolan"
-              className={inputCls}
+ className={inputCls}
             />
           </Field>
           <Field label="Cast" hint="Separate with commas, in billing order">
@@ -250,7 +250,7 @@ export function AddEntryForm({ knownGenres }: { knownGenres: string[] }) {
               value={cast}
               onChange={(e) => setCast(e.target.value)}
               placeholder="Matt Damon, Tom Holland"
-              className={inputCls}
+ className={inputCls}
             />
           </Field>
         </div>
@@ -260,7 +260,7 @@ export function AddEntryForm({ knownGenres }: { knownGenres: string[] }) {
             value={seriesName}
             onChange={(e) => setSeriesName(e.target.value)}
             placeholder="Optional"
-            className={inputCls}
+ className={inputCls}
           />
         </Field>
 
@@ -269,10 +269,10 @@ export function AddEntryForm({ knownGenres }: { knownGenres: string[] }) {
             type="checkbox"
             checked={inCinema}
             onChange={(e) => setInCinema(e.target.checked)}
-            className="mt-0.5 h-4 w-4 accent-rose"
+ className="mt-0.5 h-4 w-4 accent-[var(--accent)]"
           />
           <span>
-            <span className="block text-[14px] text-paper">Watched in a cinema</span>
+            <span className="block text-[14px] text-text">Watched in a cinema</span>
             <span className="block text-[12px] leading-relaxed text-faint">
               Counted as a cinema visit. The venue stays unknown until a geotagged photo from the
               screening is attached to the entry.
@@ -280,18 +280,18 @@ export function AddEntryForm({ knownGenres }: { knownGenres: string[] }) {
           </span>
         </label>
 
-        <Field label="A line worth keeping" hint="Optional — saved with the entry">
+        <Field label="A line worth keeping" hint="Optional, saved with the entry">
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={3}
             placeholder="Optional"
-            className={`${inputCls} resize-y`}
+ className={`${inputCls} resize-y`}
           />
         </Field>
 
         {error && (
-          <p role="alert" className="border border-rose/50 px-4 py-3 text-[13px] text-rose">
+          <p role="alert" className="border border-accent px-4 py-3 text-[13px] text-accent">
             {error}
           </p>
         )}
@@ -300,7 +300,7 @@ export function AddEntryForm({ knownGenres }: { knownGenres: string[] }) {
           <button
             type="submit"
             disabled={busy || !title.trim()}
-            className="border border-sconce bg-sconce px-5 py-2.5 text-[14px] text-ink transition-colors hover:bg-transparent hover:text-sconce disabled:cursor-not-allowed disabled:opacity-40"
+ className="border border-accent bg-accent px-5 py-2.5 text-[14px] text-on-accent transition-colors hover:bg-transparent hover:text-accent disabled:cursor-not-allowed disabled:opacity-40"
           >
             {busy ? "Saving…" : "Add to diary"}
           </button>
@@ -308,7 +308,7 @@ export function AddEntryForm({ knownGenres }: { knownGenres: string[] }) {
             type="button"
             onClick={() => router.back()}
             disabled={busy}
-            className="text-[13px] text-dim transition-colors hover:text-paper"
+ className="text-[13px] text-dim transition-colors hover:text-text"
           >
             Cancel
           </button>
@@ -319,7 +319,7 @@ export function AddEntryForm({ knownGenres }: { knownGenres: string[] }) {
 }
 
 const inputCls =
-  "w-full border border-edge bg-velvet/50 px-3 py-2.5 text-[14px] text-paper placeholder:text-faint focus:border-sconce focus:outline-none";
+  "w-full border border-line bg-surface px-3 py-2.5 text-[14px] text-text placeholder:text-faint focus:border-accent focus:outline-none";
 
 function Field({
   label, hint, required, children,
@@ -328,9 +328,9 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="eyebrow mb-2 block">
+      <span className="label mb-2 block">
         {label}
-        {required && <span className="ml-1 text-rose">*</span>}
+        {required && <span className="ml-1 text-accent">*</span>}
       </span>
       {children}
       {hint && <span className="mt-1.5 block text-[11px] text-faint">{hint}</span>}

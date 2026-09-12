@@ -472,6 +472,73 @@ export function getFilterOptions() {
   };
 }
 
+/* ------------------------------------------------------------------ genres */
+export interface GenreSummary {
+  name: string;
+  slug: string;
+  total: number;
+  watched: number;
+  watching: number;
+  toWatch: number;
+  averageRating: number | null;
+  /** Artwork of the most recently logged entry in this genre, for the index tiles. */
+  posterPath: string | null;
+  posterUrl: string | null;
+}
+
+/**
+ * Every genre, with live counts.
+ *
+ * The source carries its own rollup totals, but those are a snapshot from
+ * whenever it was last exported. Counting live rows keeps the numbers true as
+ * entries are added here.
+ */
+export function getGenres(): GenreSummary[] {
+  return db.all<GenreSummary>(sql`
+    SELECT
+      g.name  AS name,
+      g.slug  AS slug,
+      (SELECT count(*) FROM movie_genres mg WHERE mg.genre_id = g.id) AS total,
+      (SELECT count(*) FROM movie_genres mg JOIN movies m ON m.id = mg.movie_id
+        WHERE mg.genre_id = g.id AND m.status = 'Watched')  AS watched,
+      (SELECT count(*) FROM movie_genres mg JOIN movies m ON m.id = mg.movie_id
+        WHERE mg.genre_id = g.id AND m.status = 'Watching') AS watching,
+      (SELECT count(*) FROM movie_genres mg JOIN movies m ON m.id = mg.movie_id
+        WHERE mg.genre_id = g.id AND m.status = 'To Watch') AS toWatch,
+      (SELECT avg(m.rating_value) FROM movie_genres mg JOIN movies m ON m.id = mg.movie_id
+        WHERE mg.genre_id = g.id) AS averageRating,
+      (SELECT m.poster_path FROM movie_genres mg JOIN movies m ON m.id = mg.movie_id
+        WHERE mg.genre_id = g.id ORDER BY m.created_time DESC LIMIT 1) AS posterPath,
+      (SELECT m.poster_url FROM movie_genres mg JOIN movies m ON m.id = mg.movie_id
+        WHERE mg.genre_id = g.id ORDER BY m.created_time DESC LIMIT 1) AS posterUrl
+    FROM genres g
+    ORDER BY total DESC, g.name ASC
+  `);
+}
+
+export function getGenreBySlug(slug: string) {
+  const genre = db.select().from(s.genres).where(eq(s.genres.slug, slug)).get();
+  if (!genre) return null;
+
+  const movies = cardQuery()
+    .where(sql`EXISTS (SELECT 1 FROM movie_genres WHERE movie_id = ${s.movies.id} AND genre_id = ${genre.id})`)
+    .orderBy(desc(s.movies.createdTime))
+    .all() as MovieCard[];
+
+  const rated = movies.filter((m) => m.ratingValue !== null);
+  return {
+    genre,
+    movies,
+    averageRating: rated.length
+      ? rated.reduce((sum, m) => sum + (m.ratingValue ?? 0), 0) / rated.length
+      : null,
+  };
+}
+
+export function getAllGenreSlugs(): string[] {
+  return db.select({ slug: s.genres.slug }).from(s.genres).all().map((r) => r.slug);
+}
+
 /* ------------------------------------------------------------ movie detail */
 export function getMovieBySlug(slug: string) {
   const movie = db.select().from(s.movies).where(eq(s.movies.slug, slug)).get();

@@ -1,65 +1,66 @@
 import type { Metadata } from "next";
-import { Fraunces, Archivo, Space_Mono } from "next/font/google";
+import { Bricolage_Grotesque, Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { Nav } from "@/components/Nav";
+import { THEME_BOOTSTRAP } from "@/components/ThemeToggle";
 import "./globals.css";
 
-// Display: Fraunces, with the "wonk" and soft axes turned up a little — warm and
-// slightly irregular, the way a handwritten diary heading would be.
-const fraunces = Fraunces({
+/*
+  Type: a sans display with real character, set tight and heavy, against a
+  neutral text face and a mono for anything numeric. Hierarchy comes from
+  weight and colour rather than raw scale.
+*/
+const bricolage = Bricolage_Grotesque({
   subsets: ["latin"],
-  variable: "--font-fraunces",
-  axes: ["SOFT", "WONK", "opsz"],
+  variable: "--font-bricolage",
+  axes: ["opsz", "wdth"],
   display: "swap",
 });
-const archivo = Archivo({ subsets: ["latin"], variable: "--font-archivo", display: "swap" });
-const spaceMono = Space_Mono({
-  subsets: ["latin"],
-  weight: ["400", "700"],
-  variable: "--font-space-mono",
-  display: "swap",
-});
+const geist = Geist({ subsets: ["latin"], variable: "--font-geist", display: "swap" });
+const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap" });
 
-/**
- * The diary reads a local SQLite file that changes outside the build (a re-import,
- * naming a cinema). Rendering on demand keeps every page in step with it.
- */
+/** The diary reads a local database that changes outside the build. */
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: { default: "Reel — a watching diary", template: "%s · Reel" },
+  title: { default: "Reel", template: "%s / Reel" },
   description:
     "A personal diary of the films and shows you have watched, and the cinemas you saw them in.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${fraunces.variable} ${archivo.variable} ${spaceMono.variable}`}>
-      {/*
-        Browser extensions (Grammarly, password managers, translators) add their
-        own attributes to <body> before React hydrates, which React reports as a
-        mismatch. suppressHydrationWarning applies to this element's own
-        attributes only — one level deep — so genuine mismatches inside the app
-        are still reported.
-      */}
-      <body className="min-h-screen" suppressHydrationWarning>
+    <html
+      lang="en"
+ className={`${bricolage.variable} ${geist.variable} ${geistMono.variable}`}
+      suppressHydrationWarning
+    >
+      <head>
+        {/* Applies a stored theme choice before first paint, so the page never
+            flashes the wrong one. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
+      </head>
+      <body className="min-h-[100dvh]" suppressHydrationWarning>
         <a
           href="#main"
-          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:bg-sconce focus:px-3 focus:py-2 focus:text-sm focus:text-ink"
+ className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:bg-accent focus:px-3 focus:py-2 focus:text-sm focus:text-on-accent"
         >
           Skip to content
         </a>
         <Nav />
-        <main id="main" className="mx-auto max-w-[1400px] px-4 pb-24 sm:px-6 lg:px-10">
+        <main id="main" className="mx-auto w-full max-w-[1440px] px-4 pb-28 sm:px-6 lg:px-10">
           {children}
         </main>
-        <footer className="border-t border-edge/60">
-          <div className="mx-auto flex max-w-[1400px] flex-col gap-2 px-4 py-8 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-10">
-            <p className="plate text-[11px] text-faint">
+        <footer className="border-t border-line">
+          <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-2 px-4 py-9 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-10">
+            <p className="data text-[11px] text-faint">
               A record of what you watched, and where.
             </p>
-            <Link href="/data-health" className="plate text-[11px] text-faint transition-colors hover:text-sconce">
-              What the import found →
+            <Link
+              href="/data-health"
+ className="data text-[11px] text-faint transition-colors hover:text-accent"
+            >
+              Import report
             </Link>
           </div>
         </footer>

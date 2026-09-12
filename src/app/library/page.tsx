@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { MovieCard } from "@/components/MovieCard";
+import { MovieGrid } from "@/components/MovieCard";
 import { LibraryControls } from "@/components/LibraryControls";
 import { EmptyDiary } from "@/components/EmptyDiary";
 import { getLibrary, getFilterOptions, isEmpty, type LibraryFilters } from "@/lib/queries";
@@ -39,44 +39,38 @@ export default async function LibraryPage({
 
   return (
     <>
-      <header className="pt-10 sm:pt-14">
-        <div className="eyebrow">Everything logged</div>
-        <h1 className="mt-2 font-display text-[clamp(2rem,5vw,3.25rem)] font-light leading-none text-paper">
-          Library
-        </h1>
+      <header className="pt-12 sm:pt-20">
+        <h1 className="display text-[clamp(2.5rem,6vw,4rem)]">Library</h1>
+        <p className="mt-3 text-[14px] text-faint">Everything logged, {total} entries.</p>
       </header>
 
       <div className="mt-8">
-        <Suspense fallback={<div className="h-14 animate-pulse border border-edge bg-velvet/30" />}>
+        <Suspense fallback={<div className="h-14 animate-pulse border border-line bg-surface-2" />}>
           <LibraryControls options={options} total={total} showing={rows.length} />
         </Suspense>
       </div>
 
       {rows.length === 0 ? (
         <div className="py-24 text-center">
-          <h2 className="font-display text-2xl text-paper">Nothing matches those filters</h2>
+          <h2 className="display text-2xl">Nothing matches those filters</h2>
           <p className="mt-3 text-sm text-dim">
             Try widening the search, or clear the filters to see everything again.
           </p>
           <Link
             href="/library"
-            className="mt-6 inline-block border border-sconce/60 px-4 py-2 text-[13px] text-sconce transition-colors hover:bg-sconce hover:text-ink"
+ className="mt-7 inline-block bg-accent px-4 py-2.5 text-[13px] font-medium text-on-accent transition-transform active:scale-[0.98]"
           >
             Clear filters
           </Link>
         </div>
       ) : (
         <>
-          <div className="mt-8 grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 sm:gap-x-5 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-            {rows.map((m, i) => (
-              <MovieCard key={m.id} movie={m} index={i} priority={i < 6} />
-            ))}
-          </div>
+          <MovieGrid movies={rows} />
 
           {pageCount > 1 && (
             <nav className="mt-14 flex items-center justify-center gap-2" aria-label="Pagination">
               <PageLink href={pageHref(page - 1)} disabled={page === 1}>← Previous</PageLink>
-              <span className="plate px-4 text-[11px] text-faint">
+              <span className="data px-4 text-[11px] text-faint">
                 Page {page} of {pageCount}
               </span>
               <PageLink href={pageHref(page + 1)} disabled={page === pageCount}>Next →</PageLink>
@@ -90,10 +84,10 @@ export default async function LibraryPage({
 
 function PageLink({ href, disabled, children }: { href: string; disabled: boolean; children: React.ReactNode }) {
   if (disabled) {
-    return <span className="border border-edge/50 px-3.5 py-2 text-[13px] text-faint/50">{children}</span>;
+    return <span className="border border-line px-3.5 py-2 text-[13px] text-faint opacity-40">{children}</span>;
   }
   return (
-    <Link href={href} className="border border-edge px-3.5 py-2 text-[13px] text-dim transition-colors hover:border-sconce hover:text-sconce">
+    <Link href={href} className="border border-line px-3.5 py-2 text-[13px] text-dim transition-colors hover:border-accent hover:text-accent">
       {children}
     </Link>
   );
