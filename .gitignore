@@ -1,6 +1,7 @@
 # Dependencies & build output
 node_modules
 .next
+.next-prod
 out
 next-env.d.ts
 tsconfig.tsbuildinfo

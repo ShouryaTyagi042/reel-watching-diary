@@ -2,6 +2,11 @@ import type { NextConfig } from "next";
 import path from "node:path";
 
 const nextConfig: NextConfig = {
+  // Production builds write somewhere else entirely, so running `npm run build`
+  // while `npm run dev` is up cannot pull .next out from under the dev server.
+  // That failure looks like "__webpack_modules__[moduleId] is not a function"
+  // in the browser and is thoroughly confusing when it happens.
+  distDir: process.env.NEXT_DIST_DIR ?? ".next",
   // There is an unrelated package-lock.json in the user's home directory, which
   // makes Next infer ~ as the workspace root and trace far more of the disk than
   // it should. Pin the root to this app.
