@@ -13,6 +13,7 @@ import crypto from "node:crypto";
 import { eq } from "drizzle-orm";
 import * as s from "@/db/schema";
 import { haversineMeters, formatCoords, CLUSTER_RADIUS_M } from "./geo";
+import { slugify } from "./import-format";
 import type { DiaryDb } from "./entry";
 
 const venueId = (key: string) =>
@@ -89,6 +90,49 @@ export function recentreVenue(db: DiaryDb, id: string) {
     })
     .where(eq(s.venues.id, id))
     .run();
+}
+
+/**
+ * Record a cinema by name.
+ *
+ * Not every visit leaves a geotagged photo, and a cinema you can name is more
+ * use than one you cannot. A venue made this way has no position, which is
+ * honest: nothing here knows where it is, only what you call it.
+ *
+ * Reuses an existing cinema with the same name rather than making a second one.
+ */
+export function createNamedVenue(db: DiaryDb, rawName: string): ResolvedVenue {
+  const name = rawName.trim().replace(/\s+/g, " ");
+  if (!name) throw new Error("A cinema needs a name.");
+
+  const slug = slugify(name);
+  const existing = db.select().from(s.venues).where(eq(s.venues.slug, slug)).get();
+  if (existing) {
+    return {
+      id: existing.id,
+      created: false,
+      name: existing.name,
+      label: existing.label,
+      slug: existing.slug,
+    };
+  }
+
+  const id = venueId(`name:${slug}`);
+  db.insert(s.venues)
+    .values({
+      id,
+      name,
+      label: name,
+      slug,
+      lat: null,
+      lng: null,
+      source: "manual",
+      notes: "Added by name. Attach a geotagged photo from a visit to place it on the map.",
+    })
+    .onConflictDoNothing()
+    .run();
+
+  return { id, created: true, name, label: name, slug };
 }
 
 /** Drop a cinema that no longer has a single visit pointing at it. */

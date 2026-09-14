@@ -8,7 +8,8 @@ import { PersonChip } from "@/components/Avatar";
 import { ThumbnailUpload } from "@/components/ThumbnailUpload";
 import { EditEntryForm } from "@/components/EditEntryForm";
 import { ShotUpload } from "@/components/ShotUpload";
-import { getMovieBySlug, getFilterOptions } from "@/lib/queries";
+import { CinemaPicker } from "@/components/CinemaPicker";
+import { getMovieBySlug, getFilterOptions, getKnownVenues } from "@/lib/queries";
 import { formatDate, formatDateTime } from "@/lib/format";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
@@ -164,11 +165,21 @@ export default async function MoviePage({ params }: { params: Promise<{ slug: st
                 </p>
               )}
               {!visit?.venueSlug && (
-                <p className="mt-3 text-faint">
-                  This entry records that it was watched in a cinema, but not which one. No
-                  geotagged photo is attached, so the venue is unknown.
+                <p className="text-faint">
+                  This entry records that it was watched in a cinema, but not which one.
                 </p>
               )}
+              <div className="mt-4">
+                <CinemaPicker
+                  slug={movie.slug}
+                  current={{
+                    id: visit?.venueId ?? null,
+                    name: visit?.venueName ?? null,
+                    label: visit?.venueLabel ?? null,
+                  }}
+                  venues={getKnownVenues()}
+                />
+              </div>
             </div>
           </div>
         </Block>

@@ -83,7 +83,12 @@ check("no visit on an entry not marked as watched in a cinema",
   count("cinema_visits v JOIN movies m ON m.id = v.movie_id WHERE m.watched_in_theatre = 0") === 0);
 check("every entry marked as a cinema watch has a visit",
   count("movies m WHERE m.watched_in_theatre = 1 AND m.id NOT IN (SELECT movie_id FROM cinema_visits)") === 0);
-check("every cinema has coordinates", count("venues WHERE lat IS NULL OR lng IS NULL") === 0);
+// Only a cinema derived from a photo must have a position. One added by name
+// has none, which is the honest state rather than a fault.
+check("every photo-placed cinema has coordinates",
+  count("venues WHERE source = 'photo-gps' AND (lat IS NULL OR lng IS NULL)") === 0);
+check("every cinema has a name or a position",
+  count("venues WHERE (name IS NULL OR trim(name) = '') AND (lat IS NULL OR lng IS NULL)") === 0);
 check("no cinema exists without a visit",
   count("venues v WHERE NOT EXISTS (SELECT 1 FROM cinema_visits WHERE venue_id = v.id)") === 0);
 const named = all<{ name: string | null; label: string }>("SELECT name, label FROM venues");

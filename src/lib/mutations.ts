@@ -26,7 +26,7 @@ import exifr from "exifr";
 import {
   THUMBS_DIR, SHOTS_DIR, PUBLIC_DIR, ALLOWED_IMAGE_TYPES, MAX_UPLOAD_BYTES, thumbnailBaseName,
 } from "./paths";
-import { resolveVenue, recentreVenue, pruneEmptyVenues } from "./venues";
+import { resolveVenue, recentreVenue, pruneEmptyVenues, createNamedVenue } from "./venues";
 
 export { ValidationError };
 export type { NewEntryInput, EntryPatch, EditableField };
@@ -282,4 +282,74 @@ export function deleteShot(shotId: string) {
     }
   }
   return { removed: shot.sourceName };
+}
+
+/* ------------------------------------------------------------ visit venue */
+
+/**
+ * Say which cinema an entry was watched at.
+ *
+ * Three shapes: point the visit at a cinema already on record, name a new one,
+ * or detach it. Detaching leaves the visit in place with an unknown venue,
+ * which is the honest state rather than deleting the fact that you went out.
+ *
+ * Only meaningful for an entry marked as watched in a cinema. Rather than
+ * refuse, this marks it as one: asking for the cinema is a clear statement that
+ * you were in one.
+ */
+export function setVisitVenue(
+  movieSlug: string,
+  choice: { venueId?: string | null; name?: string },
+) {
+  const movie = db.select().from(s.movies).where(eq(s.movies.slug, movieSlug)).get();
+  if (!movie) throw new ValidationError("No entry with that address.");
+
+  let venueId: string | null = null;
+  let created = false;
+  let label = "";
+
+  // A name of nothing but spaces is a mistake, not a request to detach. Detaching
+  // is `venueId: null`, which is explicit.
+  if (choice.name !== undefined && !choice.name.trim()) {
+    throw new ValidationError("A cinema needs a name.");
+  }
+
+  if (choice.name?.trim()) {
+    if (choice.name.trim().length > 120) {
+      throw new ValidationError("That name is too long (120 characters max).");
+    }
+    const venue = createNamedVenue(db, choice.name);
+    venueId = venue.id;
+    created = venue.created;
+    label = venue.name ?? venue.label;
+  } else if (choice.venueId) {
+    const venue = db.select().from(s.venues).where(eq(s.venues.id, choice.venueId)).get();
+    if (!venue) throw new ValidationError("No cinema with that id.");
+    venueId = venue.id;
+    label = venue.name ?? venue.label;
+  }
+
+  if (!movie.watchedInTheatre && venueId) {
+    db.update(s.movies).set({ watchedInTheatre: true }).where(eq(s.movies.id, movie.id)).run();
+  }
+
+  const visitId = crypto.createHash("sha1").update(`visit:${movie.id}`).digest("hex").slice(0, 32);
+  const existing = db.select().from(s.cinemaVisits).where(eq(s.cinemaVisits.movieId, movie.id)).get();
+
+  if (existing) {
+    db.update(s.cinemaVisits).set({ venueId }).where(eq(s.cinemaVisits.movieId, movie.id)).run();
+  } else if (venueId || movie.watchedInTheatre) {
+    db.insert(s.cinemaVisits).values({
+      id: visitId,
+      movieId: movie.id,
+      venueId,
+      visitedAt: movie.createdTime,
+      visitedAtSource: "manual-entry",
+    }).onConflictDoNothing().run();
+  }
+
+  // A cinema nothing points at any more is not a cinema.
+  const pruned = pruneEmptyVenues(db);
+
+  return { venueId, created, label: label || null, prunedEmptyVenues: pruned };
 }

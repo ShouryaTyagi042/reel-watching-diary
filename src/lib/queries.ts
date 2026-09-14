@@ -589,6 +589,7 @@ export function getMovieBySlug(slug: string) {
     .select({
       visitedAt: s.cinemaVisits.visitedAt,
       visitedAtSource: s.cinemaVisits.visitedAtSource,
+      venueId: s.cinemaVisits.venueId,
       venueSlug: s.venues.slug,
       venueLabel: s.venues.label,
       venueName: s.venues.name,
@@ -814,6 +815,33 @@ export function getVenueBySlug(slug: string) {
     .all();
 
   return { venue, movies, shots };
+}
+
+/** Every cinema on record, for choosing one on an entry. */
+export function getKnownVenues() {
+  return db
+    .select({
+      id: s.venues.id,
+      name: s.venues.name,
+      label: s.venues.label,
+      lat: s.venues.lat,
+      visits: sql<number>`(SELECT count(*) FROM cinema_visits WHERE venue_id = ${s.venues.id})`.as("visits"),
+    })
+    .from(s.venues)
+    // Order by the expression, not the alias: SQLite resolves a bare name to a
+    // real column first, and there is no `visits` column on venues.
+    .orderBy(
+      desc(sql`(SELECT count(*) FROM cinema_visits WHERE venue_id = ${s.venues.id})`),
+      asc(s.venues.label),
+    )
+    .all()
+    .map((v) => ({
+      id: v.id,
+      name: v.name,
+      label: v.label,
+      visits: v.visits,
+      hasPosition: v.lat !== null,
+    }));
 }
 
 export function getAllVenueSlugs(): string[] {
