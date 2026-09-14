@@ -1,0 +1,44 @@
+# What the image must not carry.
+#
+# Read this next to .gitignore rather than copying it. The two have opposite
+# jobs: git excludes the diary because the repository is public, and the image
+# MUST include it or the site deploys with nothing in it. The paths that git
+# ignores and this file deliberately keeps are listed at the bottom.
+
+.git
+.gitignore
+
+# Secrets. Next copies .env files into .next/standalone on purpose, so keeping
+# them out of the build context is the only thing that keeps them out of the
+# image. Runtime configuration comes from `fly secrets`.
+.env
+.env.*
+
+# Built on the host, for the host. node_modules holds macOS binaries for
+# better-sqlite3 that cannot run on linux; the image builds its own.
+node_modules
+.next
+.next-prod
+*.tsbuildinfo
+
+# Tooling and noise.
+.agents
+.claude
+.vscode
+.DS_Store
+npm-debug.log*
+scratch
+drizzle.config.ts
+
+# ---------------------------------------------------------------------------
+# Deliberately NOT ignored, though .gitignore excludes every one of them:
+#
+#   data/diary.db            the diary itself
+#   public/posters/*         artwork
+#   public/people/*          headshots
+#   public/shots/*           photographs taken at the cinema
+#
+# They reach the image from this machine and nowhere else, because they are
+# not in the repository. `scripts/check-shippable.ts` runs during the build and
+# fails if they are missing, so an empty site cannot be deployed by accident.
+# ---------------------------------------------------------------------------

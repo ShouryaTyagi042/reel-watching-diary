@@ -19,7 +19,8 @@
     "backfill-roles": "tsx scripts/backfill-roles.ts",
     "check:routes": "tsx scripts/check-routes.ts",
     "strip-exif": "tsx scripts/strip-exif.ts",
-    "check:privacy": "tsx --env-file=.env scripts/check-privacy.ts"
+    "check:privacy": "tsx --env-file=.env scripts/check-privacy.ts",
+    "start:standalone": "rm -rf .next-prod/standalone/.next-prod/static && cp -r .next-prod/static .next-prod/standalone/.next-prod/static && node .next-prod/standalone/server.js"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
@@ -43,5 +44,8 @@
     "tailwindcss": "^4.0.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=20.9 <21"
   }
 }

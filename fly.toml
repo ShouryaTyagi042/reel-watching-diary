@@ -1,0 +1,22 @@
+# Mumbai: the nearest region to the cinemas in this diary.
+app = "reel-diary"
+primary_region = "bom"
+
+[build]
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # A personal site with no visitors most of the day. The machine sleeps and
+  # wakes on the next request, which costs a second or two of cold start and
+  # almost nothing to run.
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+
+# No [mounts]. Phase one ships the database inside the image and never writes to
+# it. A volume arrives with uploads, not before.
