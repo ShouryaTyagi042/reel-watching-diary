@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { MovieGrid } from "@/components/MovieCard";
-import { ExpandingGrid } from "@/components/ExpandingGrid";
+import { PosterFlight } from "@/components/PosterFlight";
 import { LibraryControls } from "@/components/LibraryControls";
 import { EmptyDiary } from "@/components/EmptyDiary";
 import { getLibrary, getFilterOptions, isEmpty, type LibraryFilters } from "@/lib/queries";
@@ -66,9 +66,9 @@ export default async function LibraryPage({
         </div>
       ) : (
         <>
-          <ExpandingGrid>
+          <PosterFlight>
             <MovieGrid movies={rows} />
-          </ExpandingGrid>
+          </PosterFlight>
 
           {pageCount > 1 && (
             <nav data-fade className="mt-14 flex items-center justify-center gap-2" aria-label="Pagination">

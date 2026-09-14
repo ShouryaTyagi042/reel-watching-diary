@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Poster } from "@/components/Poster";
 import { Stars } from "@/components/Stars";
 import { CoordPlate, MapLink } from "@/components/CoordPlate";
-import { Aperture } from "@/components/Aperture";
+import { DetailsEntrance } from "@/components/DetailsEntrance";
 import { PersonChip } from "@/components/Avatar";
 import { ThumbnailUpload } from "@/components/ThumbnailUpload";
 import { EditEntryForm } from "@/components/EditEntryForm";
@@ -39,113 +39,114 @@ export default async function MoviePage({ params }: { params: Promise<{ slug: st
         </Link>
       </nav>
 
-      {/* The film opens through the aperture; the way back stays put. */}
-      <Aperture>
-        {/* ---- Header ---- */}
-        <header className="mt-6 grid gap-8 sm:grid-cols-[minmax(0,200px)_1fr] sm:gap-10 lg:grid-cols-[minmax(0,260px)_1fr]">
-          <div className="w-[160px] sm:w-full">
-            <Poster
+      {/* ---- Header ---- */}
+      <header className="mt-6 grid gap-8 sm:grid-cols-[minmax(0,200px)_1fr] sm:gap-10 lg:grid-cols-[minmax(0,260px)_1fr]">
+        <div data-poster-target className="w-[160px] sm:w-full">
+          <Poster
+            title={movie.title}
+            path={movie.posterPath}
+            url={movie.posterUrl}
+            priority
+            sizes="(max-width: 640px) 160px, 260px"
+          />
+          {admin && (
+          <div className="mt-4">
+            <ThumbnailUpload
+              slug={movie.slug}
               title={movie.title}
-              path={movie.posterPath}
-              url={movie.posterUrl}
-              priority
-              sizes="(max-width: 640px) 160px, 260px"
+              currentPoster={movie.posterPath ?? movie.posterUrl}
+              currentSource={movie.posterSource}
+              compact
             />
-            {admin && (
-            <div className="mt-4">
-              <ThumbnailUpload
-                slug={movie.slug}
-                title={movie.title}
-                currentPoster={movie.posterPath ?? movie.posterUrl}
-                currentSource={movie.posterSource}
-                compact
-              />
-            </div>
+          </div>
+          )}
+        </div>
+
+        <DetailsEntrance>
+        <div className="min-w-0">
+          <h1 className="mt-2.5 display text-[clamp(2rem,6vw,3.75rem)] font-light leading-[0.98] tracking-[-0.02em] text-text">
+            {movie.title}
+          </h1>
+
+          <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3">
+            <Stars value={movie.ratingValue} raw={movie.ratingRaw} size="md" />
+            {movie.ratingRaw && (
+              <span className="data text-[11px] text-faint" title="As recorded">
+                {movie.ratingRaw}
+              </span>
             )}
           </div>
 
-          <div className="min-w-0">
-            <h1 className="mt-2.5 display text-[clamp(2rem,6vw,3.75rem)] font-light leading-[0.98] tracking-[-0.02em] text-text">
-              {movie.title}
-            </h1>
-
-            <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3">
-              <Stars value={movie.ratingValue} raw={movie.ratingRaw} size="md" />
-              {movie.ratingRaw && (
-                <span className="data text-[11px] text-faint" title="As recorded">
-                  {movie.ratingRaw}
-                </span>
-              )}
-            </div>
-
-            {genres.length > 0 && (
-              <ul className="mt-6 flex flex-wrap gap-2">
-                {genres.map((g) => (
-                  <li key={g.slug}>
-                    <Link
-                      href={`/library?genre=${g.slug}`}
-   className="border border-line px-2.5 py-1 text-[12px] text-dim transition-colors hover:border-accent hover:text-accent"
-                    >
-                      {g.name}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            <dl className="mt-8 grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
-              <Field label="Released">{movie.year ?? <Missing />}</Field>
-              <Field label="Logged" hint="When this entry was added to the diary">
-                {logged ?? <Missing />}
-              </Field>
-              <Field label="Status">{movie.status ?? <Missing />}</Field>
-              <Field label="Format">{movie.format ?? <Missing />}</Field>
-              {directors.length > 0 && (
-                <Field label={directors.length > 1 ? "Directors" : "Director"}>
-                  {directors.map((d, i) => (
-                    <span key={d.slug}>
-                      {i > 0 && ", "}
-                      <Link href={`/people/${d.slug}`} className="underline decoration-line-strong underline-offset-4 hover:text-accent">
-                        {d.name}
-                      </Link>
-                    </span>
-                  ))}
-                </Field>
-              )}
-              {movie.seriesName && (
-                <Field label="Series">
-                  <Link href={`/library?q=${encodeURIComponent(movie.seriesName)}`} className="underline decoration-line-strong underline-offset-4 hover:text-accent">
-                    {movie.seriesName}
+          {genres.length > 0 && (
+            <ul className="mt-6 flex flex-wrap gap-2">
+              {genres.map((g) => (
+                <li key={g.slug}>
+                  <Link
+                    href={`/library?genre=${g.slug}`}
+ className="border border-line px-2.5 py-1 text-[12px] text-dim transition-colors hover:border-accent hover:text-accent"
+                  >
+                    {g.name}
                   </Link>
-                </Field>
-              )}
-              <Field label="Seen in a cinema">{movie.watchedInTheatre ? "Yes" : "No"}</Field>
-            </dl>
+                </li>
+              ))}
+            </ul>
+          )}
 
-            {admin && (
-            <div className="mt-8">
-              <EditEntryForm
-                knownGenres={getFilterOptions().genres.map((g) => g.name)}
-                entry={{
-                  slug: movie.slug,
-                  title: movie.title,
-                  year: movie.year,
-                  format: movie.format,
-                  status: movie.status,
-                  rating: movie.ratingValue,
-                  seriesName: movie.seriesName,
-                  watchedInTheatre: movie.watchedInTheatre,
-                  watchedOn: movie.createdTime,
-                  genres: genres.map((g) => g.name),
-                  cast: cast.map((c) => (c.role ? `${c.name} as ${c.role}` : c.name)),
-                  directors: directors.map((d) => d.name),
-                }}
-              />
-            </div>
+          <dl className="mt-8 grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
+            <Field label="Released">{movie.year ?? <Missing />}</Field>
+            <Field label="Logged" hint="When this entry was added to the diary">
+              {logged ?? <Missing />}
+            </Field>
+            <Field label="Status">{movie.status ?? <Missing />}</Field>
+            <Field label="Format">{movie.format ?? <Missing />}</Field>
+            {directors.length > 0 && (
+              <Field label={directors.length > 1 ? "Directors" : "Director"}>
+                {directors.map((d, i) => (
+                  <span key={d.slug}>
+                    {i > 0 && ", "}
+                    <Link href={`/people/${d.slug}`} className="underline decoration-line-strong underline-offset-4 hover:text-accent">
+                      {d.name}
+                    </Link>
+                  </span>
+                ))}
+              </Field>
             )}
-          </div>
-        </header>
+            {movie.seriesName && (
+              <Field label="Series">
+                <Link href={`/library?q=${encodeURIComponent(movie.seriesName)}`} className="underline decoration-line-strong underline-offset-4 hover:text-accent">
+                  {movie.seriesName}
+                </Link>
+              </Field>
+            )}
+            <Field label="Seen in a cinema">{movie.watchedInTheatre ? "Yes" : "No"}</Field>
+          </dl>
 
+          {admin && (
+          <div className="mt-8">
+            <EditEntryForm
+              knownGenres={getFilterOptions().genres.map((g) => g.name)}
+              entry={{
+                slug: movie.slug,
+                title: movie.title,
+                year: movie.year,
+                format: movie.format,
+                status: movie.status,
+                rating: movie.ratingValue,
+                seriesName: movie.seriesName,
+                watchedInTheatre: movie.watchedInTheatre,
+                watchedOn: movie.createdTime,
+                genres: genres.map((g) => g.name),
+                cast: cast.map((c) => (c.role ? `${c.name} as ${c.role}` : c.name)),
+                directors: directors.map((d) => d.name),
+              }}
+            />
+          </div>
+          )}
+        </div>
+        </DetailsEntrance>
+      </header>
+
+      <DetailsEntrance delay={0.08}>
         {/* ---- The cinema visit ---- */}
         {movie.watchedInTheatre && (
           <Block note="Where it was seen" title="Cinema visit">
@@ -322,8 +323,7 @@ export default async function MoviePage({ params }: { params: Promise<{ slug: st
             <Field label="Title as stored"><code className="data text-[11px]">“{movie.titleRaw}”</code></Field>
           </dl>
         </details>
-      </Aperture>
-
+      </DetailsEntrance>
     </article>
   );
 }
