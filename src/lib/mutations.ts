@@ -240,10 +240,33 @@ export async function saveShot(movieSlug: string, file: File): Promise<SavedShot
   return { fileName, path: `/shots/${webName}`, capturedAt, lat, lng, camera, venue, venueNote };
 }
 
-/** Remove a photo, and any cinema it was the only evidence for. */
+/**
+ * Remove a photo: its record, both copies of the file, and any cinema it was
+ * the only evidence for.
+ *
+ * Both copies matter. Deleting only the row leaves the image stranded in
+ * public/ and in the assets folder, where nothing references it and nothing
+ * will ever clean it up.
+ */
 export function deleteShot(shotId: string) {
   const shot = db.select().from(s.movieShots).where(eq(s.movieShots.id, shotId)).get();
   if (!shot) throw new ValidationError("No photo with that id.");
+
+  const movie = db.select({ slug: s.movies.slug }).from(s.movies)
+    .where(eq(s.movies.id, shot.movieId)).get();
+
+  for (const file of [
+    path.join(PUBLIC_DIR, shot.path.replace(/^\//, "")),
+    movie ? path.join(SHOTS_DIR, movie.slug, shot.sourceName) : null,
+  ]) {
+    if (file && fs.existsSync(file)) {
+      try {
+        fs.rmSync(file);
+      } catch {
+        // A file we cannot remove is not a reason to keep a dead record.
+      }
+    }
+  }
 
   db.delete(s.movieShots).where(eq(s.movieShots.id, shotId)).run();
 

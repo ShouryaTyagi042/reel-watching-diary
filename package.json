@@ -12,7 +12,8 @@
     "import": "tsx scripts/import-collection.ts",
     "setup": "npm run db:migrate && npm run import",
     "verify": "tsx scripts/verify.ts",
-    "seed": "tsx scripts/import-collection.ts"
+    "seed": "tsx scripts/import-collection.ts",
+    "clean": "rm -rf .next .next-prod tsconfig.tsbuildinfo"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
