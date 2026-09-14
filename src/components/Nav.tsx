@@ -32,21 +32,22 @@ const LINKS = [
  * On a phone the navigation sits at the bottom, within reach of a thumb, so it
  * is a bar of destinations rather than a list behind a hamburger.
  *
- * Four of the six sections get a tab. Genres and Lines are ways of re-sorting
- * the same films rather than places you go, so they live in the sheet with the
- * theme and the owner's controls. Five slots is the ceiling before the labels
- * stop being readable at this width.
+ * Library leads, and the tabs are the ways of cutting the collection up:
+ * by title, by genre, by line, by person. The Diary and the Cinemas are the
+ * front page and a map of places, which is a different kind of browsing, so
+ * they sit in the sheet. Five slots is the ceiling before the labels stop
+ * being readable at this width.
  */
 const TABS = [
-  { href: "/", label: "Diary", icon: FilmSlate },
   { href: "/library", label: "Library", icon: SquaresFour },
-  { href: "/cinemas", label: "Cinemas", icon: MapPin },
+  { href: "/genres", label: "Genres", icon: Tag },
+  { href: "/quotes", label: "Lines", icon: Quotes },
   { href: "/people", label: "People", icon: Users },
 ];
 
 const SHEET_LINKS = [
-  { href: "/genres", label: "Genres", icon: Tag },
-  { href: "/quotes", label: "Lines", icon: Quotes },
+  { href: "/", label: "Diary", icon: FilmSlate },
+  { href: "/cinemas", label: "Cinemas", icon: MapPin },
 ];
 
 export function Nav({ admin }: { admin: boolean }) {
