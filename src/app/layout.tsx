@@ -54,7 +54,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <main id="main" className="mx-auto w-full max-w-[1440px] px-4 pb-28 sm:px-6 lg:px-10">
           {children}
         </main>
-        <footer className="border-t border-line">
+        {/* The phone's navigation bar floats over the page, so the last thing on
+            it needs room to clear the bar and the home indicator below that. */}
+        <footer
+          className="border-t border-line pb-[calc(env(safe-area-inset-bottom)+5.5rem)] lg:pb-0"
+        >
           <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-2 px-4 py-9 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-10">
             <p className="data text-[11px] text-faint">
               A record of what you watched, and where.

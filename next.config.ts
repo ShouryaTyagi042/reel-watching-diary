@@ -12,6 +12,10 @@ const nextConfig: NextConfig = {
   // it should. Pin the root to this app.
   outputFileTracingRoot: path.join(import.meta.dirname, "."),
   serverExternalPackages: ["better-sqlite3"],
+  // The dev-only badge defaults to the bottom left, which is now where the
+  // phone's navigation bar lives. Move it out of the way.
+  devIndicators: { position: "top-left" },
+
   experimental: {
     // Phosphor ships 3,024 icon modules behind one barrel export, and a bare
     // `import { X } from "@phosphor-icons/react"` drags all of them into the
