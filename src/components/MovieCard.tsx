@@ -71,16 +71,31 @@ export function MovieShelf({ movies, emptyNote }: { movies: Row[]; emptyNote: st
   );
 }
 
-/** The library and detail grids. Tiles  in as the grid enters the viewport. */
+/**
+ * The library and detail grids.
+ *
+ * Tiles rise in when the grid mounts, deliberately not when it scrolls into
+ * view. A scroll-triggered reveal with `once: true` strands this content: on a
+ * client-side navigation the container component persists, its observer has
+ * already fired and disconnected, and the incoming tiles mount hidden and never
+ * transition. Paging through the library showed an empty grid until a reload.
+ *
+ * This grid is the page. It must never depend on an event that may not arrive.
+ */
 export function MovieGrid({ movies, priorityCount = 6 }: { movies: Row[]; priorityCount?: number }) {
   const reduce = useReducedMotion();
+
+  // Remount on a change of page or filter, so the stagger plays for the new set
+  // rather than being skipped as already-animated.
+  const setKey = movies.length ? `${movies[0].id}-${movies.length}` : "empty";
+
   return (
     <motion.div
- className="grid grid-cols-2 gap-x-4 gap-y-9 sm:grid-cols-3 sm:gap-x-5 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
+      key={setKey}
+      className="grid grid-cols-2 gap-x-4 gap-y-9 sm:grid-cols-3 sm:gap-x-5 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
       variants={{ hidden: {}, shown: { transition: { staggerChildren: reduce ? 0 : 0.035 } } }}
       initial={reduce ? false : "hidden"}
-      whileInView="shown"
-      viewport={{ once: true, amount: 0.05 }}
+      animate="shown"
     >
       {movies.map((m, i) => (
         <motion.div

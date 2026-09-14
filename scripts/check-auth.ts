@@ -39,10 +39,23 @@ async function main() {
 
   // "Not configured" and "wrong password" must cost the same, or latency tells
   // an attacker which one they are looking at.
-  const t1 = Date.now(); await verifyPassword("guess", hash); const wrong = Date.now() - t1;
-  const t2 = Date.now(); await verifyPassword("guess", undefined); const unset = Date.now() - t2;
+  //
+  // Interleaved and taken as medians, because a single pair of samples is at the
+  // mercy of whatever else the machine is doing. The bug being guarded against
+  // is an early return that skips the derivation entirely, which shows up as an
+  // order of magnitude, not as jitter. The bound is loose on purpose: a test
+  // that fails when a build is running is worse than no test.
+  const wrongs: number[] = [];
+  const unsets: number[] = [];
+  for (let i = 0; i < 5; i++) {
+    let t = Date.now(); await verifyPassword("guess", hash); wrongs.push(Date.now() - t);
+    t = Date.now(); await verifyPassword("guess", undefined); unsets.push(Date.now() - t);
+  }
+  const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
+  const wrong = median(wrongs);
+  const unset = median(unsets);
   const ratio = Math.max(wrong, unset) / Math.max(1, Math.min(wrong, unset));
-  check(`unset and wrong cost alike (${wrong} vs ${unset} ms)`, ratio < 3, `ratio ${ratio.toFixed(1)}`);
+  check(`unset and wrong cost alike (${wrong} vs ${unset} ms median of 5)`, ratio < 5, `ratio ${ratio.toFixed(1)}`);
 
   console.log("\nSessions");
 

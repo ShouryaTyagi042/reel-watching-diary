@@ -7,7 +7,15 @@ import type { ReactNode } from "react";
  * Motion primitives.
  *
  * Every animation here is doing one job: showing the reader what arrived and in
- * what order. Nothing loops, nothing hijacks the scroll, nothing moves that the
+ * what order.
+ *
+ * A hazard worth knowing before reaching for these: `whileInView` with
+ * `once: true` starts content at opacity 0 and reveals it when an observer
+ * fires. If the container persists across a navigation while its children are
+ * replaced, that observer has already fired and disconnected, and the new
+ * children stay invisible. Use these for content that appears once on a page;
+ * for anything that changes in place, such as a paginated grid, animate on
+ * mount instead. MovieGrid does exactly that, for exactly this reason. Nothing loops, nothing hijacks the scroll, nothing moves that the
  * reader did not cause. Only transform and opacity are animated, and all of it
  * collapses to static under prefers-reduced-motion.
  */
