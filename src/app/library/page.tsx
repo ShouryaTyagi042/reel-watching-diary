@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { MovieGrid } from "@/components/MovieCard";
+import { ExpandingGrid } from "@/components/ExpandingGrid";
 import { LibraryControls } from "@/components/LibraryControls";
 import { EmptyDiary } from "@/components/EmptyDiary";
 import { getLibrary, getFilterOptions, isEmpty, type LibraryFilters } from "@/lib/queries";
@@ -65,7 +66,9 @@ export default async function LibraryPage({
         </div>
       ) : (
         <>
-          <MovieGrid movies={rows} />
+          <ExpandingGrid>
+            <MovieGrid movies={rows} />
+          </ExpandingGrid>
 
           {pageCount > 1 && (
             <nav className="mt-14 flex items-center justify-center gap-2" aria-label="Pagination">

@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "@phosphor-icons/react/dist/ssr";
 import { MovieGrid } from "@/components/MovieCard";
-import { GenreAperture } from "@/components/GenreAperture";
 import { getGenreBySlug } from "@/lib/queries";
 import { pluralize } from "@/lib/format";
 
@@ -54,9 +53,7 @@ export default async function GenrePage({ params }: { params: Promise<{ slug: st
         </div>
       ) : (
         <div className="mt-10">
-          <GenreAperture>
-            <MovieGrid movies={movies} entrance={false} />
-          </GenreAperture>
+          <MovieGrid movies={movies} />
         </div>
       )}
     </article>

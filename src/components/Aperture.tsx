@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 
 /**
- * The genre's films open through a cross-shaped aperture.
+ * A page opens through a cross-shaped aperture.
  *
  * Adapted from the Codrops "grid to full preview" technique, which clips an
  * element to a plus shape and animates the arm widths. There the cross is the
@@ -12,19 +12,19 @@ import { motion, useReducedMotion } from "motion/react";
  * runs the other way: the arms grow from a point until they have swallowed the
  * whole rectangle, so the films are uncovered by a shutter rather than faded in.
  *
- * Two things the technique assumes that are not true of a films grid, and what
+ * Two things the technique assumes that are not true of a page of film, and what
  * this does about them:
  *
  *   The demo's grid is roughly square and fits on screen. An arm given as a
- *   percentage degenerates on anything else: this grid is 358x994 on a phone,
+ *   percentage degenerates on anything else: a films grid is 358x994 on a phone,
  *   where a 22% arm is 218px across a 358px-wide element and the cross reads as
  *   a bar with two notches. The arm is taken from the SHORT side instead, so it
  *   is the same number of pixels each way and stays a cross at any shape.
  *
  *   The demo opens from the middle of the element, which is also the middle of
- *   the screen. A long grid's middle is far below the fold, so the shutter would
+ *   the screen. A long page's middle is far below the fold, so the shutter would
  *   open somewhere nobody is looking and only a sliver would creep into view.
- *   The centre is placed where the grid actually meets the viewport.
+ *   The centre is placed where the content actually meets the viewport.
  */
 
 const ARM = 0.22; // arm thickness at mid-open, as a fraction of the short side
@@ -51,7 +51,7 @@ interface Shape {
   mid: string;
 }
 
-export function GenreAperture({ children }: { children: React.ReactNode }) {
+export function Aperture({ children }: { children: React.ReactNode }) {
   const reduce = useReducedMotion();
   const ref = useRef<HTMLDivElement>(null);
   const [shape, setShape] = useState<Shape | null>(null);
@@ -59,11 +59,11 @@ export function GenreAperture({ children }: { children: React.ReactNode }) {
   /*
    * The closed shape is applied from the client, never rendered.
    *
-   * Putting it in `initial` would mean the server sends a grid clipped down to a
-   * point, and the films are the page: if the bundle is slow, blocked or broken,
-   * a visitor gets an empty rectangle with no sign there was anything in it. The
-   * markup goes out complete and the aperture shuts in a layout effect, which
-   * React flushes before paint, so it still costs nothing visually.
+   * Putting it in `initial` would mean the server sends the page clipped down to
+   * a point: if the bundle is slow, blocked or broken, a visitor gets an empty
+   * rectangle with no sign there was anything in it. The markup goes out
+   * complete and the aperture shuts in a layout effect, which React flushes
+   * before paint, so it still costs nothing visually.
    */
   useBeforePaint(() => {
     if (reduce) return;

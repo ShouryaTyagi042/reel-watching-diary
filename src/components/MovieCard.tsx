@@ -17,7 +17,7 @@ export function MovieCard({ movie, priority = false }: { movie: Row; priority?: 
   const reduce = useReducedMotion();
 
   return (
-    <Link href={`/movies/${movie.slug}`} className="group block">
+    <Link href={`/movies/${movie.slug}`} data-tile="" className="group block">
       <motion.div
  className="relative"
         whileHover={reduce ? undefined : { y: -6 }}
@@ -82,17 +82,7 @@ export function MovieShelf({ movies, emptyNote }: { movies: Row[]; emptyNote: st
  *
  * This grid is the page. It must never depend on an event that may not arrive.
  */
-export function MovieGrid({
-  movies,
-  priorityCount = 6,
-  // The genre page opens the whole grid through an aperture, and a per-tile
-  // stagger underneath it reads as two entrances fighting each other.
-  entrance = true,
-}: {
-  movies: Row[];
-  priorityCount?: number;
-  entrance?: boolean;
-}) {
+export function MovieGrid({ movies, priorityCount = 6 }: { movies: Row[]; priorityCount?: number }) {
   const reduce = useReducedMotion();
 
   // Remount on a change of page or filter, so the stagger plays for the new set
@@ -104,7 +94,7 @@ export function MovieGrid({
       key={setKey}
       className="grid grid-cols-2 gap-x-4 gap-y-9 sm:grid-cols-3 sm:gap-x-5 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
       variants={{ hidden: {}, shown: { transition: { staggerChildren: reduce ? 0 : 0.035 } } }}
-      initial={reduce || !entrance ? false : "hidden"}
+      initial={reduce ? false : "hidden"}
       animate="shown"
     >
       {movies.map((m, i) => (
