@@ -21,6 +21,7 @@
  *   --cast N            how many cast to take from Wikidata (default 5)
  *   --cast-names "A,B"  use exactly these cast, ignoring Wikidata's order
  *   --genres "A,B"      override the genre mapping
+ *   --page "Title"      use this exact Wikipedia page, skipping the search
  *   --no-images         skip all downloads
  *   --dry-run           resolve and report, write nothing
  */
@@ -69,6 +70,18 @@ async function get(url: string, attempt = 1): Promise<Response> {
   }
   return res;
 }
+/**
+ * A failed request must never look like an empty result. Callers that care about
+ * the difference use `getJsonStrict`; `getJson` keeps the lenient behaviour for
+ * places where absence and failure mean the same thing.
+ */
+async function getJsonStrict<T>(url: string): Promise<T | null> {
+  const res = await get(url);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return (await res.json()) as T;
+}
+
 async function getJson<T>(url: string): Promise<T | null> {
   const res = await get(url);
   if (!res.ok) return null;
@@ -82,25 +95,64 @@ interface Summary {
   wikibase_item?: string;
 }
 
-async function resolveFilm(name: string): Promise<Summary | null> {
-  const direct = await getJson<Summary>(
-    `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(name.replace(/\s+/g, "_"))}?redirect=true`,
-  );
-  const isFilm = (x: Summary | null) =>
-    !!x && x.type === "standard" && /\bfilm\b/i.test(`${x.description ?? ""} ${x.extract ?? ""}`);
-  if (isFilm(direct)) return direct;
+/**
+ * Wikidata "instance of" values that count as something this diary holds.
+ * Checking the claim is what stops a search for a film landing on the novel or
+ * short story it was adapted from: those pages mention films in their prose, so
+ * a keyword test on the text picks them up happily and is wrong.
+ */
+const WORK_TYPES = new Set([
+  "Q11424",    // film
+  "Q506240",   // television film
+  "Q202866",   // animated film
+  "Q24869",    // feature film
+  "Q24862",    // short film
+  "Q5398426",  // television series
+  "Q1259759",  // miniseries
+  "Q581714",   // animated series
+  "Q63952888", // animated feature film
+]);
 
-  // Fall back to search, which is what disambiguates "About Time" from the phrase.
-  const search = await getJson<{ query?: { search?: { title: string }[] } }>(
-    "https://en.wikipedia.org/w/api.php?" +
-      new URLSearchParams({ action: "query", format: "json", list: "search", srsearch: `${name} film`, srlimit: "5" }),
-  );
-  for (const hit of search?.query?.search ?? []) {
-    await sleep(300);
-    const s2 = await getJson<Summary>(
-      `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(hit.title.replace(/\s+/g, "_"))}?redirect=true`,
+async function instanceOf(qid: string): Promise<string[]> {
+  const claims = await wikidata(qid);
+  return idsOf(claims, "P31");
+}
+
+/**
+ * Find the film. A candidate is only accepted once Wikidata confirms it is one.
+ */
+async function resolveFilm(name: string): Promise<Summary | null> {
+  const forced = opt("page");
+  const candidates: string[] = forced ? [forced] : [name];
+
+  if (!forced) {
+    const search = await getJson<{ query?: { search?: { title: string }[] } }>(
+      "https://en.wikipedia.org/w/api.php?" +
+        new URLSearchParams({ action: "query", format: "json", list: "search", srsearch: `${name} film`, srlimit: "6" }),
     );
-    if (isFilm(s2)) return s2;
+    for (const hit of search?.query?.search ?? []) {
+      if (!candidates.includes(hit.title)) candidates.push(hit.title);
+    }
+  }
+
+  const rejected: string[] = [];
+  for (const title of candidates) {
+    await sleep(250);
+    const page = await getJson<Summary>(
+      `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title.replace(/\s+/g, "_"))}?redirect=true`,
+    );
+    if (!page || page.type !== "standard" || !page.wikibase_item) continue;
+
+    const types = await instanceOf(page.wikibase_item);
+    if (types.some((t) => WORK_TYPES.has(t))) return page;
+    rejected.push(`${page.title} [${page.description ?? "no description"}]`);
+    await sleep(250);
+  }
+
+  if (rejected.length) {
+    console.log("\n  Rejected, not a film or show according to Wikidata:");
+    for (const r of rejected.slice(0, 5)) console.log(`    ${r}`);
+    console.log('  Pass --page "Exact Wikipedia title" to choose one yourself.');
   }
   return null;
 }
@@ -218,26 +270,27 @@ async function licenceOf(host: "commons" | "en", file: string): Promise<string> 
 }
 
 /** Fetch a person's headshot from Commons, only if they have no file already. */
-async function headshotFor(name: string, dir: string): Promise<{ status: string; detail?: string }> {
+async function headshotFor(name: string, dir: string): Promise<{ status: string; detail?: string; savedTo?: string }> {
   const wanted = slugify(name);
   if (fs.existsSync(dir) && fs.readdirSync(dir).some((f) => slugify(path.basename(f, path.extname(f))) === wanted)) {
     return { status: "already had one" };
   }
-  const sum = await getJson<Summary>(
+  const sum = await getJsonStrict<Summary>(
     `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(name.replace(/\s+/g, "_"))}?redirect=true`,
   );
   const img = sum?.originalimage?.source ?? sum?.thumbnail?.source;
   const isPerson = /\b(actor|actress|film|director|screenwriter|filmmaker|producer|comedian|writer)\b/i.test(
     `${sum?.description ?? ""} ${sum?.extract ?? ""}`,
   );
-  if (!sum || sum.type === "disambiguation" || !img || !isPerson) {
-    return { status: "no free image found" };
-  }
+  if (!sum) return { status: "no Wikipedia page" };
+  if (sum.type === "disambiguation") return { status: "ambiguous name, skipped" };
+  if (!img) return { status: "page has no image" };
+  if (!isPerson) return { status: "page is not about a film person", detail: sum.description ?? "" };
   const file = commonsFile(img);
   const lic = await licenceOf("commons", file);
   if (/fair use|non-?free/i.test(lic)) return { status: "skipped, not freely licensed", detail: lic };
   const { dest, bytes } = await download(sizedCommons(file), dir, name);
-  return { status: "downloaded", detail: `${lic}, ${(bytes / 1024).toFixed(0)}KB, ${path.basename(dest)}` };
+  return { status: "downloaded", detail: `${lic}, ${(bytes / 1024).toFixed(0)}KB, ${path.basename(dest)}`, savedTo: dest };
 }
 
 /* ----------------------------------------------------------------- run --- */
@@ -343,10 +396,23 @@ async function run() {
 
   /* ---- headshots ---- */
   console.log("\n  Headshots");
+  // Somebody who directs and also acts needs a file in both folders, because the
+  // importer matches each role against its own directory. Fetch the image once
+  // and copy it across rather than asking Wikipedia for it twice.
+  const fetched = new Map<string, string>();
   for (const [people, dir] of [[directors, DIRECTORS], [cast, ACTORS]] as const) {
     for (const person of people) {
+      const already = fetched.get(person.toLowerCase());
+      if (already && fs.existsSync(already)) {
+        const dest = path.join(dir, path.basename(already));
+        fs.mkdirSync(dir, { recursive: true });
+        if (!fs.existsSync(dest)) fs.copyFileSync(already, dest);
+        console.log(`    ${person.padEnd(24)} copied from the other role`);
+        continue;
+      }
       try {
         const r = await headshotFor(person, dir);
+        if (r.savedTo) fetched.set(person.toLowerCase(), r.savedTo);
         console.log(`    ${person.padEnd(24)} ${r.status}${r.detail ? `  [${r.detail}]` : ""}`);
       } catch (e) {
         console.log(`    ${person.padEnd(24)} failed: ${e instanceof Error ? e.message : e}`);

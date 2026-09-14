@@ -747,12 +747,24 @@ async function run() {
   }
 
   /* ---- headshots that matched nobody ---- */
+  // A file already attached to somebody on an earlier run is accounted for, even
+  // though this run had no reason to touch it. Without this, every headshot that
+  // was working fine gets reported as an orphan.
+  const attached = new Set(
+    [
+      ...db.select({ src: s.actors.photoSource }).from(s.actors).all(),
+      ...db.select({ src: s.directors.photoSource }).from(s.directors).all(),
+    ]
+      .map((r) => r.src)
+      .filter((v): v is string => !!v),
+  );
+
   for (const [pool, dir, role] of [
     [actorPhotos, "src/Actors", "actor"],
     [directorPhotos, "src/Directors", "director"],
   ] as const) {
     for (const p of pool) {
-      if (usedPeoplePhotos.has(p.absPath)) continue;
+      if (usedPeoplePhotos.has(p.absPath) || attached.has(p.fileName)) continue;
       stats.peoplePhotosUnmatched++;
       report("warning", "person-photo-unmatched", p.fileName,
         `Headshot in ${dir} matches no ${role} in the diary. Left unassigned rather than attached to the wrong person.`);
@@ -780,8 +792,12 @@ async function run() {
     line("Duplicate title collisions", stats.duplicateTitles);
     console.log("");
     line("Genres", stats.genresInserted);
-    line("Actors", `${stats.actorsInserted} (${stats.actorPhotos} with photos)`);
-    line("Directors", `${stats.directorsInserted} (${stats.directorPhotos} with photos)`);
+    const withPhotos = (t: typeof s.actors | typeof s.directors) =>
+      db.select({ n: sql<number>`count(*)` }).from(t).where(sql`photo_path IS NOT NULL`).get()?.n ?? 0;
+    const total = (t: typeof s.actors | typeof s.directors) =>
+      db.select({ n: sql<number>`count(*)` }).from(t).get()?.n ?? 0;
+    line("Actors", `${total(s.actors)} (${withPhotos(s.actors)} with photos)`);
+    line("Directors", `${total(s.directors)} (${withPhotos(s.directors)} with photos)`);
     line("Headshots matched by near-miss", stats.peoplePhotosFuzzy);
     line("Headshots matching nobody", stats.peoplePhotosUnmatched);
     line("Quotes", stats.quotesInserted);
