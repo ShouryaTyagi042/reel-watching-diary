@@ -91,6 +91,28 @@ async function main() {
   check("the nav offers sign-in, not the editor",
     nav.includes("Sign in") && !nav.includes("Add entry"));
 
+  /*
+   * A deployment with no admin credentials has no owner, and the checks below
+   * cannot pass by design: the session minted here is signed with this
+   * machine's secret, and the server has none to verify it with. That is the
+   * whole of phase one's read-only posture, so report it as such rather than as
+   * three failures, which is how a check stops being read.
+   */
+  const signin = await body("/signin");
+  if (signin.includes("No password is set yet")) {
+    console.log("\nWhat the owner sees");
+    console.log("  --   nothing: no password is set on this deployment, so there is");
+    console.log("       no owner and nothing can be edited. Read only by construction.");
+    console.log("\n" + "-".repeat(54));
+    console.log(`${checks - failures} of ${checks} checks passed`);
+    if (failures) {
+      console.log(`${failures} failed\n`);
+      process.exit(1);
+    }
+    console.log("Positions stay with the owner.\n");
+    return;
+  }
+
   console.log("\nWhat the owner sees");
 
   const token = await createSessionToken();

@@ -1,6 +1,8 @@
-# Mumbai: the nearest region to the cinemas in this diary.
+# Singapore. Mumbai would be nearer to the cinemas in this diary, but Fly has
+# retired bom for new machines. sin costs less to serve from anyway: egress from
+# Asia-Pacific is $0.04/GB against India's $0.12, for about 30ms more latency.
 app = "reel-diary"
-primary_region = "bom"
+primary_region = "sin"
 
 [build]
 
