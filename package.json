@@ -11,9 +11,11 @@
     "db:reset": "rm -f data/diary.db data/diary.db-shm data/diary.db-wal && npm run db:migrate",
     "import": "tsx scripts/import-collection.ts",
     "setup": "npm run db:migrate && npm run import",
-    "verify": "tsx scripts/verify.ts",
+    "verify": "tsx scripts/verify.ts && tsx scripts/check-auth.ts",
     "seed": "tsx scripts/import-collection.ts",
-    "clean": "node scripts/clean.mjs"
+    "clean": "node scripts/clean.mjs",
+    "set-password": "tsx scripts/set-password.ts",
+    "check:auth": "tsx scripts/check-auth.ts"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
