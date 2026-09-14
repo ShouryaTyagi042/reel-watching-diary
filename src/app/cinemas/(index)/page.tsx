@@ -3,12 +3,14 @@ import { CoordPlate } from "@/components/CoordPlate";
 import { MovieCard } from "@/components/MovieCard";
 import { Poster } from "@/components/Poster";
 import { EmptyDiary } from "@/components/EmptyDiary";
+import { isAdmin } from "@/lib/auth";
 import { getVenues, getUnplacedVisits, getDashboardStats, isEmpty } from "@/lib/queries";
 import { formatDate, pluralize } from "@/lib/format";
 
 export const metadata = { title: "Cinemas" };
 
-export default function CinemasPage() {
+export default async function CinemasPage() {
+  const admin = await isAdmin();
   if (isEmpty()) return <EmptyDiary />;
 
   const venues = getVenues();
@@ -82,9 +84,11 @@ export default function CinemasPage() {
                         </div>
 
                         <div className="data mt-1.5 text-[11px] text-faint">
-                          {v.lat != null && v.lng != null
+                          {admin && v.lat != null && v.lng != null
                             ? `${v.lat.toFixed(4)}° N  ${v.lng.toFixed(4)}° E`
-                            : "no position recorded"}
+                            : v.lat != null
+                              ? "Placed from a photo"
+                              : "No position recorded"}
                         </div>
 
                         <div className="mt-4 flex items-baseline gap-2">

@@ -10,6 +10,7 @@ import { EditEntryForm } from "@/components/EditEntryForm";
 import { ShotUpload } from "@/components/ShotUpload";
 import { CinemaPicker } from "@/components/CinemaPicker";
 import { getMovieBySlug, getFilterOptions, getKnownVenues } from "@/lib/queries";
+import { isAdmin } from "@/lib/auth";
 import { formatDate, formatDateTime } from "@/lib/format";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
@@ -22,6 +23,9 @@ export default async function MoviePage({ params }: { params: Promise<{ slug: st
   const { slug } = await params;
   const data = getMovieBySlug(slug);
   if (!data) notFound();
+
+  // Hiding a control is courtesy, not security. The gate is on the route.
+  const admin = await isAdmin();
 
   const { movie, genres, cast, directors, quotes, shots, visit, series } = data;
   const logged = formatDate(movie.createdTime);
@@ -44,6 +48,7 @@ export default async function MoviePage({ params }: { params: Promise<{ slug: st
             priority
             sizes="(max-width: 640px) 160px, 260px"
           />
+          {admin && (
           <div className="mt-4">
             <ThumbnailUpload
               slug={movie.slug}
@@ -53,6 +58,7 @@ export default async function MoviePage({ params }: { params: Promise<{ slug: st
               compact
             />
           </div>
+          )}
         </div>
 
         <div className="min-w-0">
@@ -113,6 +119,7 @@ export default async function MoviePage({ params }: { params: Promise<{ slug: st
             <Field label="Seen in a cinema">{movie.watchedInTheatre ? "Yes" : "No"}</Field>
           </dl>
 
+          {admin && (
           <div className="mt-8">
             <EditEntryForm
               knownGenres={getFilterOptions().genres.map((g) => g.name)}
@@ -132,6 +139,7 @@ export default async function MoviePage({ params }: { params: Promise<{ slug: st
               }}
             />
           </div>
+          )}
         </div>
       </header>
 
@@ -141,13 +149,14 @@ export default async function MoviePage({ params }: { params: Promise<{ slug: st
           <div className="grid gap-5 sm:grid-cols-[minmax(0,320px)_1fr] sm:items-start">
             <div>
               <CoordPlate
-                lat={visit?.lat ?? null}
-                lng={visit?.lng ?? null}
+                lat={admin ? visit?.lat ?? null : null}
+                lng={admin ? visit?.lng ?? null : null}
+                admin={admin}
                 name={visit?.venueName}
                 label={visit?.venueLabel ?? undefined}
                 href={visit?.venueSlug ? `/cinemas/${visit.venueSlug}` : undefined}
               />
-              {visit?.lat != null && visit?.lng != null && (
+              {admin && visit?.lat != null && visit?.lng != null && (
                 <div className="mt-2">
                   <MapLink lat={visit.lat} lng={visit.lng} />
                 </div>
@@ -156,7 +165,9 @@ export default async function MoviePage({ params }: { params: Promise<{ slug: st
             <div className="text-[13px] leading-relaxed text-dim">
               {visit?.visitedAt && (
                 <p>
-                  <span className="text-text">{formatDateTime(visit.visitedAt)}</span>{" "}
+                  <span className="text-text">
+                    {admin ? formatDateTime(visit.visitedAt) : formatDate(visit.visitedAt)}
+                  </span>{" "}
                   <span className="text-faint">
                     ({visit.visitedAtSource === "photo-exif"
                       ? "from the timestamp on a photo taken during the screening"
@@ -169,6 +180,7 @@ export default async function MoviePage({ params }: { params: Promise<{ slug: st
                   This entry records that it was watched in a cinema, but not which one.
                 </p>
               )}
+              {admin && (
               <div className="mt-4">
                 <CinemaPicker
                   slug={movie.slug}
@@ -180,6 +192,7 @@ export default async function MoviePage({ params }: { params: Promise<{ slug: st
                   venues={getKnownVenues()}
                 />
               </div>
+              )}
             </div>
           </div>
         </Block>
@@ -193,10 +206,18 @@ export default async function MoviePage({ params }: { params: Promise<{ slug: st
         <ShotUpload
           slug={movie.slug}
           title={movie.title}
+          admin={admin}
           watchedInTheatre={movie.watchedInTheatre}
+          // Each photo carries the GPS and the exact minute it was taken, plus
+          // the camera's filename. That is admin-only, and withholding it here
+          // rather than in ShotUpload keeps it out of the serialised props too.
           shots={shots.map((sh) => ({
-            id: sh.id, path: sh.path, capturedAt: sh.capturedAt,
-            lat: sh.lat, lng: sh.lng, sourceName: sh.sourceName,
+            id: sh.id,
+            path: sh.path,
+            capturedAt: sh.capturedAt,
+            lat: admin ? sh.lat : null,
+            lng: admin ? sh.lng : null,
+            sourceName: admin ? sh.sourceName : null,
           }))}
         />
       </Block>

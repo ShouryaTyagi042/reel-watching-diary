@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { setVisitVenue, ValidationError } from "@/lib/mutations";
+import { withAdmin } from "@/lib/auth";
 
 /**
  * Say which cinema an entry was watched at.
@@ -9,7 +10,7 @@ import { setVisitVenue, ValidationError } from "@/lib/mutations";
  *   { name: "..." }      name a new one
  *   { venueId: null }    detach, leaving the visit with an unknown venue
  */
-export async function PATCH(req: Request, { params }: { params: Promise<{ slug: string }> }) {
+export const PATCH = withAdmin(async (req: Request, { params }: { params: Promise<{ slug: string }> }) => {
   const { slug } = await params;
 
   let body: unknown;
@@ -37,4 +38,4 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ slug: 
     console.error("Failed to set the cinema:", e);
     return NextResponse.json({ error: "The cinema could not be saved." }, { status: 500 });
   }
-}
+});

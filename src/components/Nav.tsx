@@ -74,14 +74,37 @@ export function Nav({ admin }: { admin: boolean }) {
 
         <div className="ml-auto flex items-center gap-1 lg:ml-4">
           <ThemeToggle />
-          <Link
-            href="/add"
-            onClick={() => setOpen(false)}
+          {admin ? (
+            <>
+              <Link
+                href="/add"
+                onClick={() => setOpen(false)}
  className="hidden items-center gap-1.5 bg-accent px-3.5 py-2 text-[13px] font-medium text-on-accent transition-transform active:scale-[0.98] sm:inline-flex"
-          >
-            <Plus size={14} weight="bold" />
-            Add entry
-          </Link>
+              >
+                <Plus size={14} weight="bold" />
+                Add entry
+              </Link>
+              <button
+                type="button"
+                onClick={signOut}
+                disabled={signingOut}
+                aria-label="Sign out"
+                title="Sign out"
+ className="hidden h-9 w-9 place-items-center text-faint transition-colors hover:text-text disabled:opacity-50 sm:grid"
+              >
+                <SignOut size={16} />
+              </button>
+            </>
+          ) : (
+            <Link
+              href="/signin"
+              onClick={() => setOpen(false)}
+ className="hidden items-center gap-1.5 px-3 py-2 text-[13px] text-faint transition-colors hover:text-text sm:inline-flex"
+            >
+              <SignIn size={14} />
+              Sign in
+            </Link>
+          )}
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}

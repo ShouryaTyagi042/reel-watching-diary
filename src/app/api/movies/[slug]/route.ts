@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { updateEntry, ValidationError, type EntryPatch } from "@/lib/mutations";
 import { EDITABLE_FIELDS } from "@/lib/entry";
+import { withAdmin } from "@/lib/auth";
 
 /** Edit an entry. Only the fields present in the body are touched. */
-export async function PATCH(req: Request, { params }: { params: Promise<{ slug: string }> }) {
+export const PATCH = withAdmin(async (req: Request, { params }: { params: Promise<{ slug: string }> }) => {
   const { slug } = await params;
 
   let body: unknown;
@@ -35,4 +36,4 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ slug: 
     console.error("Failed to update entry:", e);
     return NextResponse.json({ error: "The entry could not be saved." }, { status: 500 });
   }
-}
+});

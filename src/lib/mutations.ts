@@ -27,6 +27,8 @@ import {
   THUMBS_DIR, SHOTS_DIR, PUBLIC_DIR, ALLOWED_IMAGE_TYPES, MAX_UPLOAD_BYTES, thumbnailBaseName,
 } from "./paths";
 import { resolveVenue, recentreVenue, pruneEmptyVenues, createNamedVenue } from "./venues";
+import { slugify } from "./import-format";
+import { and, ne } from "drizzle-orm";
 
 export { ValidationError };
 export type { NewEntryInput, EntryPatch, EditableField };
@@ -190,7 +192,12 @@ export async function saveShot(movieSlug: string, file: File): Promise<SavedShot
   const shotId = crypto.createHash("sha1").update(`shot:${movie.id}:${fileName}`).digest("hex").slice(0, 32);
   const position = db.select({ n: sql<number>`count(*)` }).from(s.movieShots)
     .where(eq(s.movieShots.movieId, movie.id)).get()?.n ?? 0;
-  const webName = copyAsset(abs, path.join(PUBLIC_DIR, "shots"), `${movie.id.slice(0, 8)}-${shotId.slice(0, 6)}`);
+
+  // The served copy is re-encoded without metadata. Hiding coordinates from the
+  // page is not enough on its own: the GPS is inside the file, and anyone who
+  // opens the image gets it. The original keeps its EXIF, untouched, in your
+  // assets folder.
+  const webName = await publishStripped(abs, `${movie.id.slice(0, 8)}-${shotId.slice(0, 6)}`);
 
   let venue: SavedShot["venue"] = null;
   let venueNote: string | null = null;
@@ -284,6 +291,32 @@ export function deleteShot(shotId: string) {
   return { removed: shot.sourceName };
 }
 
+/**
+ * Copy an image into /public with its metadata removed.
+ *
+ * sharp drops EXIF unless told to keep it, so a plain re-encode is the whole
+ * job. Falls back to a straight copy if the image cannot be decoded, and says
+ * so, rather than losing the photo over a metadata concern.
+ */
+async function publishStripped(source: string, baseName: string): Promise<string> {
+  const dir = path.join(PUBLIC_DIR, "shots");
+  fs.mkdirSync(dir, { recursive: true });
+  const ext = path.extname(source).toLowerCase();
+  const dest = path.join(dir, `${baseName}${ext === ".png" ? ".png" : ".jpg"}`);
+
+  try {
+    const sharp = (await import("sharp")).default;
+    // rotate() bakes the orientation in before the EXIF that described it goes.
+    const pipeline = sharp(source).rotate();
+    if (ext === ".png") await pipeline.png().toFile(dest);
+    else await pipeline.jpeg({ quality: 86 }).toFile(dest);
+    return path.basename(dest);
+  } catch (e) {
+    console.warn(`Could not re-encode ${path.basename(source)}, copying as-is:`, e);
+    return copyAsset(source, dir, baseName);
+  }
+}
+
 /* ------------------------------------------------------------ visit venue */
 
 /**
@@ -352,4 +385,53 @@ export function setVisitVenue(
   const pruned = pruneEmptyVenues(db);
 
   return { venueId, created, label: label || null, prunedEmptyVenues: pruned };
+}
+
+/* ----------------------------------------------------------- rename venue */
+
+/**
+ * Name a cinema.
+ *
+ * Lives here rather than in the route handler so that every write in the app
+ * goes through one module. A route reaching into the database directly is a
+ * route that can be forgotten when a rule changes, and this one was exactly
+ * that for a while.
+ */
+/**
+ * A slug that is free, or the same one this venue already holds.
+ *
+ * Two cinemas can genuinely share a name across cities, and the slug is the URL,
+ * so a collision has to resolve rather than throw.
+ */
+function uniqueVenueSlug(base: string, selfId: string): string {
+  const root = base || "cinema";
+  for (let n = 0; ; n++) {
+    const slug = n === 0 ? root : `${root}-${n + 1}`;
+    const taken = db
+      .select({ id: s.venues.id })
+      .from(s.venues)
+      .where(and(eq(s.venues.slug, slug), ne(s.venues.id, selfId)))
+      .get();
+    if (!taken) return slug;
+  }
+}
+
+export function renameVenue(id: string, rawName: string | null) {
+  const venue = db.select().from(s.venues).where(eq(s.venues.id, id)).get();
+  if (!venue) throw new ValidationError("No cinema with that id.");
+
+  const name = rawName === null ? null : rawName.trim().slice(0, 120) || null;
+
+  // Naming a cinema has to rewrite its label and slug too. Both were derived
+  // from GPS when the venue was created from a photo, so leaving them alone
+  // publishes the position in the label and in the URL, whatever the page
+  // chooses to render.
+  const patch: { name: string | null; label?: string; slug?: string } = { name };
+  if (name) {
+    patch.label = name;
+    patch.slug = uniqueVenueSlug(slugify(name), id);
+  }
+
+  db.update(s.venues).set(patch).where(eq(s.venues.id, id)).run();
+  return { id, name, slug: patch.slug ?? venue.slug };
 }

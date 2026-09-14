@@ -1,10 +1,15 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { isAdmin } from "@/lib/auth";
 import { AddEntryForm } from "@/components/AddEntryForm";
 import { getFilterOptions } from "@/lib/queries";
 
 export const metadata = { title: "Add an entry" };
 
-export default function AddPage() {
+export default async function AddPage() {
+  // For the owner only: one is a form, the other exposes file paths.
+  if (!(await isAdmin())) redirect("/signin?next=/add");
+
   // Offer the genres already in use, so the vocabulary stays consistent rather
   // than growing a near-duplicate for every new entry.
   const genres = getFilterOptions().genres.map((g) => g.name);

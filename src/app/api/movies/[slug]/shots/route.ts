@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { saveShot, deleteShot, ValidationError } from "@/lib/mutations";
 import { MAX_UPLOAD_BYTES } from "@/lib/paths";
+import { withAdmin } from "@/lib/auth";
 
 /** Attach a photo taken during a screening. Its GPS is what places the cinema. */
-export async function POST(req: Request, { params }: { params: Promise<{ slug: string }> }) {
+export const POST = withAdmin(async (req: Request, { params }: { params: Promise<{ slug: string }> }) => {
   const { slug } = await params;
 
   let form: FormData;
@@ -44,10 +45,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     return NextResponse.json({ error: failed[0]?.error ?? "Nothing was saved.", failed }, { status: 400 });
   }
   return NextResponse.json({ saved, failed });
-}
+});
 
 /** Remove a photo, and the cinema it was the only evidence for. */
-export async function DELETE(req: Request) {
+export const DELETE = withAdmin(async (req: Request) => {
   const id = new URL(req.url).searchParams.get("id");
   if (!id) return NextResponse.json({ error: "Which photo?" }, { status: 400 });
   try {
@@ -57,4 +58,4 @@ export async function DELETE(req: Request) {
     console.error("Failed to remove photo:", e);
     return NextResponse.json({ error: "The photo could not be removed." }, { status: 500 });
   }
-}
+});

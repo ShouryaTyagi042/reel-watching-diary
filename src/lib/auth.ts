@@ -98,6 +98,27 @@ function json(status: number, error: string): Response {
   });
 }
 
+/**
+ * Wrap a route handler so it refuses anyone who is not the owner.
+ *
+ * The gate lives here, at the boundary every write must cross, rather than
+ * deeper in the write layer. Two routes have at some point reached past that
+ * layer into the database directly; a gate there would have missed them.
+ *
+ * The context argument is forwarded deliberately. A wrapper that drops it
+ * breaks every dynamic route, because `params` becomes undefined and awaiting
+ * it throws somewhere far from the cause.
+ */
+export function withAdmin<Ctx>(
+  handler: (req: Request, ctx: Ctx) => Promise<Response> | Response,
+): (req: Request, ctx: Ctx) => Promise<Response> {
+  return async (req: Request, ctx: Ctx): Promise<Response> => {
+    const denied = await requireAdmin(req);
+    if (denied) return denied;
+    return handler(req, ctx);
+  };
+}
+
 /** True when the server has everything it needs to sign anyone in. */
 export function authIsConfigured(): boolean {
   const secret = process.env.SESSION_SECRET;

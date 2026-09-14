@@ -12,7 +12,7 @@ interface Shot {
   capturedAt: string | null;
   lat: number | null;
   lng: number | null;
-  sourceName: string;
+  sourceName: string | null;
 }
 
 /**
@@ -27,11 +27,14 @@ export function ShotUpload({
   slug,
   title,
   shots,
+  admin,
   watchedInTheatre,
 }: {
   slug: string;
   title: string;
   shots: Shot[];
+  /** Visitors see the photos. Adding and removing them belongs to the owner. */
+  admin: boolean;
   watchedInTheatre: boolean;
 }) {
   const router = useRouter();
@@ -116,23 +119,33 @@ export function ShotUpload({
             <figcaption className="data flex items-center gap-1.5 border-t border-line px-2.5 py-2 text-[10px] text-faint">
               {sh.lat !== null && sh.lng !== null && <Crosshair size={11} className="shrink-0 text-accent" />}
               <span className="truncate">
-                {sh.capturedAt ? new Date(sh.capturedAt).toLocaleString("en-GB", {
-                  day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit",
-                }) : sh.sourceName}
+                {sh.capturedAt
+                  ? new Date(sh.capturedAt).toLocaleString("en-GB", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                      // The minute you were sitting in a named cinema is the
+                      // owner's to see, not a visitor's.
+                      ...(admin ? { hour: "numeric" as const, minute: "2-digit" as const } : {}),
+                    })
+                  : sh.sourceName ?? "Photo"}
               </span>
             </figcaption>
+            {admin && (
             <button
               type="button"
               onClick={() => remove(sh.id)}
               disabled={busy}
-              aria-label={`Remove photo ${sh.sourceName}`}
+              aria-label={`Remove photo ${sh.sourceName ?? ""}`.trim()}
               className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center bg-bg/85 text-faint opacity-0 backdrop-blur-sm transition-opacity hover:text-accent focus-visible:opacity-100 group-hover:opacity-100"
             >
               <Trash size={13} />
             </button>
+            )}
           </motion.figure>
         ))}
 
+        {admin && (
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
@@ -144,13 +157,16 @@ export function ShotUpload({
             {busy ? "Saving" : shots.length ? "Add more" : "Add photos"}
           </span>
         </button>
+        )}
       </div>
 
+      {admin && (
       <p className="mt-3 text-[11.5px] leading-relaxed text-faint">
         {watchedInTheatre
           ? "A photo with GPS places the cinema. Photos within 250 m of one already on record count as the same cinema."
           : "Mark this entry as watched in a cinema first, then a photo with GPS will place the venue."}
       </p>
+      )}
 
       {result && (
         <ul role="status" className="mt-3 space-y-1">

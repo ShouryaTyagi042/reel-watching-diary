@@ -17,6 +17,7 @@ export function CoordPlate({
   label,
   href,
   compact = false,
+  admin = false,
 }: {
   lat: number | null;
   lng: number | null;
@@ -24,9 +25,15 @@ export function CoordPlate({
   label?: string;
   href?: string;
   compact?: boolean;
+  /**
+   * A position is a record of where a person physically was, with a timestamp.
+   * Visitors get the cinema's name; the fix itself belongs to the owner.
+   */
+  admin?: boolean;
 }) {
-  const coords = coordText(lat, lng);
-  const title = name ?? (coords ? "Unnamed cinema" : label ?? "Cinema not identified");
+  const coords = admin ? coordText(lat, lng) : null;
+  const placed = lat !== null && lng !== null;
+  const title = name ?? (placed ? "Unnamed cinema" : label ?? "Cinema not identified");
 
   const body = (
     <div
@@ -47,9 +54,11 @@ export function CoordPlate({
         >
           {title}
         </div>
-        <div className={`data mt-0.5 truncate text-faint ${compact ? "text-[10px]" : "text-[11px]"}`}>
-          {coords ?? "no position recorded"}
-        </div>
+        {(coords || !placed) && (
+          <div className={`data mt-0.5 truncate text-faint ${compact ? "text-[10px]" : "text-[11px]"}`}>
+            {coords ?? "no position recorded"}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { saveThumbnail, ValidationError } from "@/lib/mutations";
 import { MAX_UPLOAD_BYTES } from "@/lib/paths";
+import { withAdmin } from "@/lib/auth";
 
 /**
  * Attach a thumbnail to an entry.
@@ -9,7 +10,7 @@ import { MAX_UPLOAD_BYTES } from "@/lib/paths";
  * existing snake_case convention, so a later import finds it by the normal slug
  * match rather than needing any record of this upload.
  */
-export async function POST(req: Request, { params }: { params: Promise<{ slug: string }> }) {
+export const POST = withAdmin(async (req: Request, { params }: { params: Promise<{ slug: string }> }) => {
   const { slug } = await params;
 
   let form: FormData;
@@ -44,4 +45,4 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     console.error("Failed to save thumbnail:", e);
     return NextResponse.json({ error: "The image could not be saved." }, { status: 500 });
   }
-}
+});

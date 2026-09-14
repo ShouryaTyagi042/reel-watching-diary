@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { MovieCard } from "@/components/MovieCard";
 import { MapLink } from "@/components/CoordPlate";
 import { VenueNameForm } from "@/components/VenueNameForm";
+import { isAdmin } from "@/lib/auth";
 import { getVenueBySlug } from "@/lib/queries";
 import { formatDate, formatDateTime, coordText } from "@/lib/format";
 
@@ -18,13 +19,15 @@ export default async function CinemaPage({ params }: { params: Promise<{ slug: s
   const data = getVenueBySlug(slug);
   if (!data) notFound();
 
+  const admin = await isAdmin();
+
   const { venue, movies, shots } = data;
   const rated = movies.filter((m) => m.ratingValue !== null);
   const avg = rated.length
     ? rated.reduce((sum, m) => sum + (m.ratingValue ?? 0), 0) / rated.length
     : null;
   const visits = movies.map((m) => m.visitedAt).filter(Boolean) as string[];
-  const coords = coordText(venue.lat, venue.lng);
+  const coords = admin ? coordText(venue.lat, venue.lng) : null;
 
   return (
     <article className="pb-10">
@@ -44,15 +47,23 @@ export default async function CinemaPage({ params }: { params: Promise<{ slug: s
         </h1>
 
         <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-3">
-          <span className="data text-[13px] text-dim">{coords ?? "no position recorded"}</span>
-          {venue.lat != null && venue.lng != null && <MapLink lat={venue.lat} lng={venue.lng} />}
+          {admin && (
+            <>
+              <span className="data text-[13px] text-dim">{coords ?? "no position recorded"}</span>
+              {venue.lat != null && venue.lng != null && <MapLink lat={venue.lat} lng={venue.lng} />}
+            </>
+          )}
         </div>
 
-        <div className="mt-6">
-          <VenueNameForm id={venue.id} name={venue.name} />
-        </div>
+        {admin && (
+          <div className="mt-6">
+            <VenueNameForm id={venue.id} name={venue.name} />
+          </div>
+        )}
 
-        {venue.notes && <p className="mt-6 max-w-2xl text-[13px] leading-relaxed text-faint">{venue.notes}</p>}
+        {admin && venue.notes && (
+          <p className="mt-6 max-w-2xl text-[13px] leading-relaxed text-faint">{venue.notes}</p>
+        )}
       </header>
 
       <dl className="mt-9 grid grid-cols-2 gap-px border border-line bg-line sm:grid-cols-4">
@@ -84,7 +95,7 @@ export default async function CinemaPage({ params }: { params: Promise<{ slug: s
               {movies.map((m) => (
                 <li key={m.id} className="flex flex-wrap items-baseline gap-x-4 gap-y-1 border-b border-line py-3">
                   <span className="data w-40 shrink-0 text-[11px] text-faint">
-                    {formatDateTime(m.visitedAt) ?? "undated"}
+                    {(admin ? formatDateTime(m.visitedAt) : formatDate(m.visitedAt)) ?? "undated"}
                   </span>
                   <Link href={`/movies/${m.slug}`} className="text-[14px] text-text transition-colors hover:text-accent">
                     {m.title}
@@ -120,7 +131,7 @@ export default async function CinemaPage({ params }: { params: Promise<{ slug: s
                   </div>
                   <figcaption className="data border-t border-line px-2.5 py-2 text-[10px] text-faint">
                     <span className="block truncate text-dim">{sh.movieTitle}</span>
-                    {formatDateTime(sh.capturedAt)}
+                    {admin ? formatDateTime(sh.capturedAt) : formatDate(sh.capturedAt)}
                   </figcaption>
                 </Link>
               </figure>

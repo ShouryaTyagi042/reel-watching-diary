@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { createEntry, ValidationError, type NewEntryInput } from "@/lib/mutations";
+import { withAdmin } from "@/lib/auth";
 
 /** Create a diary entry from the UI. Marked `origin: "app"` so imports leave it alone. */
-export async function POST(req: Request) {
+export const POST = withAdmin(async (req: Request) => {
   let body: unknown;
   try {
     body = await req.json();
@@ -20,4 +21,4 @@ export async function POST(req: Request) {
     console.error("Failed to create entry:", e);
     return NextResponse.json({ error: "The entry could not be saved." }, { status: 500 });
   }
-}
+});

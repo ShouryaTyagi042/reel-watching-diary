@@ -6,6 +6,7 @@ import { Section } from "@/components/Section";
 import { MovieShelf } from "@/components/MovieCard";
 import { CoordPlate } from "@/components/CoordPlate";
 import { EmptyDiary } from "@/components/EmptyDiary";
+import { isAdmin } from "@/lib/auth";
 import { Reveal, Stagger, StaggerItem, Magnetic } from "@/components/Motion";
 import {
   getDashboardStats, getRecentlyLogged, getTopRated, getWatchlist, getInProgress,
@@ -14,7 +15,8 @@ import {
 import { formatDate, pluralize } from "@/lib/format";
 import { PersonChip } from "@/components/Avatar";
 
-export default function DiaryPage() {
+export default async function DiaryPage() {
+  const admin = await isAdmin();
   if (isEmpty()) return <EmptyDiary />;
 
   const stats = getDashboardStats();
@@ -151,7 +153,14 @@ export default function DiaryPage() {
             {venues.map((v) => (
               <StaggerItem key={v.id}>
                 <Link href={`/cinemas/${v.slug}`} className="group block border border-line p-5 transition-colors hover:border-accent">
-                  <CoordPlate lat={v.lat} lng={v.lng} name={v.name} label={v.label} compact />
+                  <CoordPlate
+                    lat={admin ? v.lat : null}
+                    lng={admin ? v.lng : null}
+                    name={v.name}
+                    label={v.label}
+                    compact
+                    admin={admin}
+                  />
                   <div className="mt-5 flex items-baseline justify-between">
                     <span className="display text-[30px] leading-none">{v.visits}</span>
                     <span className="label">{v.visits === 1 ? "visit" : "visits"}</span>

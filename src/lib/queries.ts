@@ -24,11 +24,6 @@ export interface MovieCard {
   watchedInTheatre: boolean;
   seriesName: string | null;
   genres: string;      // comma-joined, built in SQL
-  venueName: string | null;
-  venueLabel: string | null;
-  venueSlug: string | null;
-  venueLat: number | null;
-  venueLng: number | null;
   visitedAt: string | null;
 }
 
@@ -51,11 +46,6 @@ const cardColumns = {
     FROM movie_genres mg JOIN genres g ON g.id = mg.genre_id
     WHERE mg.movie_id = ${s.movies.id}
   )`.as("genres"),
-  venueName: s.venues.name,
-  venueLabel: s.venues.label,
-  venueSlug: s.venues.slug,
-  venueLat: s.venues.lat,
-  venueLng: s.venues.lng,
   visitedAt: s.cinemaVisits.visitedAt,
 };
 

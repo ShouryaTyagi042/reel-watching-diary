@@ -1,17 +1,15 @@
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
-import { db } from "@/db/client";
-import * as s from "@/db/schema";
+import { renameVenue, ValidationError } from "@/lib/mutations";
+import { withAdmin } from "@/lib/auth";
 
 /**
- * Name a venue.
+ * Name a cinema.
  *
- * The imported collection has no cinema names — only coordinates recovered from photo
- * EXIF — so the name is the one piece of cinema data that comes from the user
- * rather than the import. It is stored on the venue row and the importer leaves
- * it alone on subsequent runs.
+ * Nothing in the data carries a cinema name, only a position recovered from
+ * photo EXIF, so the name is the one piece of cinema data that comes from the
+ * owner. The importer leaves it alone on subsequent runs.
  */
-export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export const PATCH = withAdmin(async (req: Request, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params;
 
   let body: unknown;
@@ -26,13 +24,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ error: "“name” must be a string, or null to clear it." }, { status: 400 });
   }
 
-  const name = typeof raw === "string" ? raw.trim().slice(0, 120) : null;
-
-  const venue = db.select().from(s.venues).where(eq(s.venues.id, id)).get();
-  if (!venue) {
-    return NextResponse.json({ error: "No cinema with that id." }, { status: 404 });
+  try {
+    return NextResponse.json(renameVenue(id, raw));
+  } catch (e) {
+    if (e instanceof ValidationError) return NextResponse.json({ error: e.message }, { status: 404 });
+    console.error("Failed to rename the cinema:", e);
+    return NextResponse.json({ error: "The name could not be saved." }, { status: 500 });
   }
-
-  db.update(s.venues).set({ name: name || null }).where(eq(s.venues.id, id)).run();
-  return NextResponse.json({ id, name: name || null });
-}
+});

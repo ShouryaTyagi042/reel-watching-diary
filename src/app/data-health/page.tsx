@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+import { isAdmin } from "@/lib/auth";
 import { getImportReport, isEmpty } from "@/lib/queries";
 import { EmptyDiary } from "@/components/EmptyDiary";
 import { formatDateTime } from "@/lib/format";
@@ -53,7 +55,10 @@ const GROUPS: { title: string; keys: [string, string][] }[] = [
   },
 ];
 
-export default function DataHealthPage() {
+export default async function DataHealthPage() {
+  // For the owner only: one is a form, the other exposes file paths.
+  if (!(await isAdmin())) redirect("/signin?next=/data-health");
+
   if (isEmpty()) return <EmptyDiary />;
 
   const { runAt, stats, issues } = getImportReport();
