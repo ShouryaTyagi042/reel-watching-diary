@@ -126,7 +126,7 @@ export default async function MoviePage({ params }: { params: Promise<{ slug: st
                 watchedInTheatre: movie.watchedInTheatre,
                 watchedOn: movie.createdTime,
                 genres: genres.map((g) => g.name),
-                cast: cast.map((c) => c.name),
+                cast: cast.map((c) => (c.role ? `${c.name} as ${c.role}` : c.name)),
                 directors: directors.map((d) => d.name),
               }}
             />
@@ -225,7 +225,13 @@ export default async function MoviePage({ params }: { params: Promise<{ slug: st
             ))}
             {cast.map((p) => (
               <li key={`a-${p.slug}`}>
-                <PersonChip name={p.name} slug={p.slug} photoPath={p.photoPath} size={104} />
+                <PersonChip
+                  name={p.name}
+                  slug={p.slug}
+                  photoPath={p.photoPath}
+                  role={p.role ?? undefined}
+                  size={104}
+                />
               </li>
             ))}
           </ul>

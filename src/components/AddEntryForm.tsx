@@ -245,11 +245,11 @@ export function AddEntryForm({ knownGenres }: { knownGenres: string[] }) {
  className={inputCls}
             />
           </Field>
-          <Field label="Cast" hint="Separate with commas, in billing order">
+          <Field label="Cast" hint="Commas, in billing order. Add a character with &quot;Name as Character&quot;.">
             <input
               value={cast}
               onChange={(e) => setCast(e.target.value)}
-              placeholder="Matt Damon, Tom Holland"
+              placeholder="Matt Damon as Odysseus, Tom Holland as Telemachus"
  className={inputCls}
             />
           </Field>

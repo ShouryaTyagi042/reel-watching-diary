@@ -20,6 +20,7 @@
  *   --cinema            record it as a cinema visit
  *   --cast N            how many cast to take from Wikidata (default 5)
  *   --cast-names "A,B"  use exactly these cast, ignoring Wikidata's order
+ *   --no-roles          skip the character lookup
  *   --genres "A,B"      override the genre mapping
  *   --page "Title"      use this exact Wikipedia page, skipping the search
  *   --no-images         skip all downloads
@@ -33,6 +34,7 @@ import * as s from "../src/db/schema";
 import { createEntry, ValidationError } from "../src/lib/entry";
 import { slugify } from "../src/lib/import-format";
 import { thumbnailStem } from "../src/lib/thumbnail-name";
+import { fetchCastRoles, matchRoles } from "../src/lib/cast-roles";
 
 const UA = "ReelDiary/1.0 (personal film diary, local single-user use)";
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -327,6 +329,30 @@ async function run() {
     ? { used: genreOverride, dropped: [] as string[] }
     : mapGenres(rawGenres, knownGenres);
 
+  // Wikidata records who was in a film but almost never who they played: its
+  // character qualifier is absent across every film checked here. The article's
+  // Cast section does carry it, so read the characters from there.
+  let castWithRoles = cast;
+  let rolesFound = 0;
+  let rolesMissing: string[] = [];
+  if (!flag("no-roles") && cast.length) {
+    try {
+      await sleep(700);
+      const roles = await fetchCastRoles(film.title);
+      const { matched, unmatched } = matchRoles(
+        cast.map((name) => ({ name, slug: slugify(name) })),
+        roles,
+      );
+      const byName = new Map(matched.map((m) => [m.name, m.role]));
+      castWithRoles = cast.map((name) => (byName.has(name) ? `${name} as ${byName.get(name)}` : name));
+      rolesFound = matched.length;
+      rolesMissing = unmatched;
+    } catch (e) {
+      console.log(`\n  character lookup failed: ${e instanceof Error ? e.message : e}`);
+      console.log("  Continuing without characters rather than guessing them.");
+    }
+  }
+
   console.log(`\n  year      ${year ?? "unknown"}`);
   console.log(`  director  ${directors.join(", ") || "unknown"}`);
   console.log(`  cast      ${cast.join(", ") || "unknown"}`);
@@ -335,6 +361,12 @@ async function run() {
     console.log(`             Order there is not billing order, so pass --cast-names to choose.)`);
   }
   console.log(`  genres    ${genres.join(", ") || "none mapped"}${dropped.length ? `   (dropped: ${dropped.join(", ")})` : ""}`);
+  if (rolesFound || rolesMissing.length) {
+    console.log(`  roles     ${rolesFound} found${rolesMissing.length ? `, no character for ${rolesMissing.join(", ")}` : ""}`);
+    for (const entry of castWithRoles.filter((c) => c.includes(" as "))) {
+      console.log(`              ${entry}`);
+    }
+  }
 
   const existing = db.select({ title: s.movies.title }).from(s.movies).where(eq(s.movies.slug, slugify(film.title.replace(/\s*\(.*\)$/, "")))).get();
   if (existing) console.log(`\n  note: "${existing.title}" is already in the diary; a second entry would be created.`);
@@ -357,7 +389,7 @@ async function run() {
       watchedOn: opt("watched-on") ?? null,
       watchedInTheatre: flag("cinema"),
       genres,
-      cast,
+      cast: castWithRoles,
       directors,
     });
   } catch (e) {

@@ -134,6 +134,14 @@ export const movieActors = sqliteTable(
     actorId: text("actor_id").notNull().references(() => actors.id, { onDelete: "cascade" }),
     /** Billing order as listed in the "Cast" relation. */
     position: integer("position").notNull().default(0),
+    /**
+     * The character this actor played in this entry.
+     *
+     * It belongs on the relationship rather than on the actor: the same person
+     * plays someone different in every film. NULL when the character is not
+     * known, which is honest and common for minor credits.
+     */
+    role: text("role"),
   },
   (t) => [primaryKey({ columns: [t.movieId, t.actorId] })],
 );

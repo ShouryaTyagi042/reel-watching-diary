@@ -165,8 +165,9 @@ export function createEntry(db: DiaryDb, input: NewEntryInput) {
   for (const g of dedupe(input.genres)) {
     db.insert(s.movieGenres).values({ movieId: id, genreId: ensureGenre(db, g) }).onConflictDoNothing().run();
   }
-  dedupe(input.cast).forEach((name, i) => {
-    db.insert(s.movieActors).values({ movieId: id, actorId: ensureActor(db, name), position: i })
+  dedupeCast(input.cast).forEach((entry, i) => {
+    db.insert(s.movieActors)
+      .values({ movieId: id, actorId: ensureActor(db, entry.name), position: i, role: entry.role })
       .onConflictDoNothing().run();
   });
   for (const d of dedupe(input.directors)) {
@@ -198,6 +199,41 @@ export function createEntry(db: DiaryDb, input: NewEntryInput) {
   }
 
   return { id, slug, title };
+}
+
+/**
+ * A cast entry, optionally carrying the character.
+ *
+ * Written as "Domhnall Gleeson as Tim Lake", matching how cast lists read
+ * everywhere else, so there is nothing new to learn to type one.
+ */
+export interface CastEntry {
+  name: string;
+  role: string | null;
+}
+
+export function parseCastEntry(raw: string): CastEntry {
+  const m = raw.match(/^(.*?)\s+as\s+(.+)$/i);
+  if (!m) return { name: raw.trim(), role: null };
+  const name = m[1].trim();
+  const role = m[2].trim();
+  // "as" inside a name is not a credit. Require something on both sides.
+  return name && role ? { name, role } : { name: raw.trim(), role: null };
+}
+
+/** Deduplicate cast entries by person, keeping the first role given. */
+function dedupeCast(values: string[] | undefined): CastEntry[] {
+  const seen = new Set<string>();
+  const out: CastEntry[] = [];
+  for (const value of values ?? []) {
+    const entry = parseCastEntry(value);
+    if (!entry.name) continue;
+    const key = slugify(entry.name);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(entry);
+  }
+  return out;
 }
 
 function dedupe(values: string[] | undefined): string[] {
@@ -345,7 +381,7 @@ export function updateEntry(db: DiaryDb, slug: string, patch: EntryPatch) {
     const next = dedupe(values);
     const same =
       next.length === current.length &&
-      next.every((v, i) => slugify(v) === slugify(current[i] ?? ""));
+      next.every((v, i) => v.trim().toLowerCase() === (current[i] ?? "").trim().toLowerCase());
     if (same) return;
     write(next);
     changed.push(field);
@@ -368,20 +404,21 @@ export function updateEntry(db: DiaryDb, slug: string, patch: EntryPatch) {
     }
   });
 
+  // Compared as "Name as Role" so a change of character counts as a change.
   const currentCast = db
-    .select({ name: s.actors.name })
+    .select({ name: s.actors.name, role: s.movieActors.role })
     .from(s.movieActors)
     .innerJoin(s.actors, eq(s.actors.id, s.movieActors.actorId))
     .where(eq(s.movieActors.movieId, movie.id))
     .orderBy(s.movieActors.position)
     .all()
-    .map((r) => r.name);
+    .map((r) => (r.role ? `${r.name} as ${r.role}` : r.name));
 
   relationChanged("cast", patch.cast, currentCast, (names) => {
     db.delete(s.movieActors).where(eq(s.movieActors.movieId, movie.id)).run();
-    names.forEach((n, i) => {
+    dedupeCast(names).forEach((entry, i) => {
       db.insert(s.movieActors)
-        .values({ movieId: movie.id, actorId: ensureActor(db, n), position: i })
+        .values({ movieId: movie.id, actorId: ensureActor(db, entry.name), position: i, role: entry.role })
         .onConflictDoNothing().run();
     });
   });

@@ -552,7 +552,12 @@ export function getMovieBySlug(slug: string) {
     .all();
 
   const cast = db
-    .select({ name: s.actors.name, slug: s.actors.slug, photoPath: s.actors.photoPath })
+    .select({
+      name: s.actors.name,
+      slug: s.actors.slug,
+      photoPath: s.actors.photoPath,
+      role: s.movieActors.role,
+    })
     .from(s.movieActors)
     .innerJoin(s.actors, eq(s.actors.id, s.movieActors.actorId))
     .where(eq(s.movieActors.movieId, movie.id))

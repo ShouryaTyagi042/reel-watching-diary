@@ -196,7 +196,7 @@ export function EditEntryForm({
               <Field label="Director" hint="Separate several with commas">
                 <input value={directors} onChange={(e) => setDirectors(e.target.value)} className={INPUT} />
               </Field>
-              <Field label="Cast" hint="Commas, in billing order">
+              <Field label="Cast" hint={'Commas, in billing order. Add a character with "Name as Character".'}>
                 <input value={cast} onChange={(e) => setCast(e.target.value)} className={INPUT} />
               </Field>
             </div>

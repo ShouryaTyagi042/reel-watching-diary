@@ -50,8 +50,27 @@ it leaves the entry without artwork.
 | `--cinema` | Record it as a cinema visit |
 | `--cast N` | How many cast to take from Wikidata (default 5) |
 | `--cast-names "A,B"` | Use exactly these cast, ignoring Wikidata's order |
+| `--no-roles` | Skip the character lookup |
 | `--genres "A,B"` | Override the genre mapping |
 | `--no-images` | Skip all downloads |
+
+## Characters
+
+Each cast credit can carry the character played. Wikidata records *who was in* a
+film but almost never *who they played*: its character qualifier is empty across
+every film checked here. The Cast section of the Wikipedia article does carry it,
+written as `Actor as Character`, so that is where the script reads it from.
+
+It is prose, so it is occasionally surprising rather than wrong. Wikipedia lists
+Hugh Jackman in The Prestige as "Lord Caldlow", his character's alias, not
+"Robert Angier". The script reports the source faithfully; correct it by hand on
+the entry if you disagree with the article.
+
+An actor the Cast section does not name gets no character, and the script says
+which. Never fill one in from memory.
+
+Characters can also be typed directly anywhere cast is entered, in the same
+shape: `Domhnall Gleeson as Tim Lake`.
 
 ## Two traps worth knowing
 
