@@ -12,6 +12,14 @@ const nextConfig: NextConfig = {
   // it should. Pin the root to this app.
   outputFileTracingRoot: path.join(import.meta.dirname, "."),
   serverExternalPackages: ["better-sqlite3"],
+  experimental: {
+    // Phosphor ships 3,024 icon modules behind one barrel export, and a bare
+    // `import { X } from "@phosphor-icons/react"` drags all of them into the
+    // compile. That was most of the 10,696 modules a cold route was building,
+    // and most of the 12 seconds it took. This rewrites those imports to the
+    // individual icons actually used.
+    optimizePackageImports: ["@phosphor-icons/react", "motion"],
+  },
   images: {
     // Posters copied out of the Notion export live in /public/posters.
     // Two records only have remote Notion cover URLs (no local asset shipped
