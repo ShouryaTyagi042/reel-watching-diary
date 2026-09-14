@@ -40,12 +40,12 @@ export default async function LibraryPage({
 
   return (
     <>
-      <header className="pt-12 sm:pt-20">
+      <header data-fade className="pt-12 sm:pt-20">
         <h1 className="display text-[clamp(2.5rem,6vw,4rem)]">Library</h1>
         <p className="mt-3 text-[14px] text-faint">Everything logged, {total} entries.</p>
       </header>
 
-      <div className="mt-8">
+      <div data-fade className="mt-8">
         <Suspense fallback={<div className="h-14 animate-pulse border border-line bg-surface-2" />}>
           <LibraryControls options={options} total={total} showing={rows.length} />
         </Suspense>
@@ -71,7 +71,7 @@ export default async function LibraryPage({
           </ExpandingGrid>
 
           {pageCount > 1 && (
-            <nav className="mt-14 flex items-center justify-center gap-2" aria-label="Pagination">
+            <nav data-fade className="mt-14 flex items-center justify-center gap-2" aria-label="Pagination">
               <PageLink href={pageHref(page - 1)} disabled={page === 1}>← Previous</PageLink>
               <span className="data px-4 text-[11px] text-faint">
                 Page {page} of {pageCount}

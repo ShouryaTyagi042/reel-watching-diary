@@ -27,7 +27,15 @@ import { motion, useReducedMotion } from "motion/react";
  *   The centre is placed where the content actually meets the viewport.
  */
 
-const ARM = 0.22; // arm thickness at mid-open, as a fraction of the short side
+/*
+ * Arm thickness at mid-open, against the viewport's width.
+ *
+ * This was 0.22 of the element's short side, which on a 2428px film page gave a
+ * 79px arm: a thread running the full height of the screen with a faint bar
+ * across it. Recorded and played back it read as a rendering fault rather than
+ * a shutter. Against the viewport it is a bold cross at any page length.
+ */
+const ARM = 0.45;
 
 function cross(t: number, e: number, cx = 50, cy = 50): string {
   const l = cx - t / 2;
@@ -74,13 +82,24 @@ export function Aperture({ children }: { children: React.ReactNode }) {
     if (r.width <= 0 || r.height <= 0) return;
 
     const seen = Math.max(0, Math.min(r.bottom, window.innerHeight) - Math.max(r.top, 0));
-    const arm = ARM * Math.min(r.width, seen || r.height);
+    const arm = ARM * Math.min(r.width, window.innerWidth);
     const centre = (Math.max(r.top, 0) + Math.min(r.bottom, window.innerHeight)) / 2;
     const cy = Math.min(90, Math.max(10, ((centre - r.top) / r.height) * 100));
 
+    const t = (arm / r.width) * 100;
+    const e = (arm / r.height) * 100;
+
+    /*
+     * Shut is a small cross, not a point.
+     *
+     * From nothing, the first painted frame after the route changes is black:
+     * the poster that was expanding has gone with the old page and the aperture
+     * has not opened yet. Recorded, that is a visible blink. Starting at a third
+     * of the way there means the film is on screen the instant the page is.
+     */
     setShape({
-      shut: cross(0, 0, 50, cy),
-      mid: cross((arm / r.width) * 100, (arm / r.height) * 100, 50, cy),
+      shut: cross(t * 0.32, e * 0.32, 50, cy),
+      mid: cross(t, e, 50, cy),
     });
   }, [reduce]);
 
@@ -101,7 +120,12 @@ export function Aperture({ children }: { children: React.ReactNode }) {
           ? { clipPath: [shape.shut, shape.mid, OPEN], scale: [1.04, 1.02, 1] }
           : { clipPath: "none", scale: 1 }
       }
-      transition={{ duration: 0.95, times: [0, 0.45, 1], ease: [0.65, 0, 0.35, 1] }}
+      /*
+       * Eased out, not in-out. The aperture starts from a point, so a slow start
+       * is a blank screen: the page has just swapped and there would be nothing
+       * on it for a beat. This shows the film immediately and settles open.
+       */
+      transition={{ duration: 0.85, times: [0, 0.45, 1], ease: [0.22, 1, 0.36, 1] }}
     >
       {children}
     </motion.div>
