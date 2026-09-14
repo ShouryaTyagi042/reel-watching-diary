@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import { List, X, Plus } from "@phosphor-icons/react";
+import { List, X, Plus, SignOut, SignIn } from "@phosphor-icons/react";
 import { ThemeToggle } from "./ThemeToggle";
 
 const LINKS = [
@@ -16,10 +16,22 @@ const LINKS = [
   { href: "/quotes", label: "Lines" },
 ];
 
-export function Nav() {
+export function Nav({ admin }: { admin: boolean }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const reduce = useReducedMotion();
+
+  async function signOut() {
+    setSigningOut(true);
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } finally {
+      // A full load, not a router refresh: the session is a property of the whole
+      // app, and cached router entries can otherwise still render as signed in.
+      window.location.assign("/");
+    }
+  }
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -84,7 +96,7 @@ export function Nav() {
 
       {open && (
         <nav className="border-t border-line lg:hidden" aria-label="Main">
-          {[...LINKS, { href: "/add", label: "Add entry" }].map((l) => (
+          {[...LINKS, admin ? { href: "/add", label: "Add entry" } : { href: "/signin", label: "Sign in" }].map((l) => (
             <Link
               key={l.href}
               href={l.href}

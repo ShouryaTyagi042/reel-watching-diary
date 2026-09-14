@@ -6,6 +6,9 @@
  * These are the properties the whole gate rests on, so they are worth asserting
  * rather than assuming. Run before trusting a deployment.
  */
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { hashPassword, verifyPassword } from "../src/lib/password";
 import { createSessionToken, verifySessionToken, SESSION_COOKIE } from "../src/lib/session";
 
@@ -28,7 +31,7 @@ async function main() {
   const hash = await hashPassword("correct horse battery staple");
   const derivationMs = Date.now() - started;
 
-  check("hash has the documented shape", /^scrypt\$\d+\$\d+\$\d+\$[^$]+\$[^$]+$/.test(hash), hash.slice(0, 30));
+  check("hash has the documented shape", /^scrypt:\d+:\d+:\d+:[^:]+:[^:]+$/.test(hash), hash.slice(0, 30));
   check("the plaintext never appears in the hash", !hash.includes("correct horse"));
   check("the right password verifies", await verifyPassword("correct horse battery staple", hash));
   check("a wrong password does not", !(await verifyPassword("correct horse battery stapl", hash)));
@@ -56,6 +59,32 @@ async function main() {
   const unset = median(unsets);
   const ratio = Math.max(wrong, unset) / Math.max(1, Math.min(wrong, unset));
   check(`unset and wrong cost alike (${wrong} vs ${unset} ms median of 5)`, ratio < 5, `ratio ${ratio.toFixed(1)}`);
+
+  // The hash has to survive being written to a .env file and read back. Next's
+  // loader performs shell-style variable expansion, so a `$`-separated hash is
+  // silently shredded into something unparseable and every login fails with
+  // "wrong password". This caught exactly that, and must keep catching it.
+  {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "reel-env-"));
+    const file = path.join(dir, ".env");
+    fs.writeFileSync(file, `ADMIN_PASSWORD_HASH='${hash}'\n`);
+
+    const { loadEnvConfig } = await import("@next/env");
+    const before = process.env.ADMIN_PASSWORD_HASH;
+    delete process.env.ADMIN_PASSWORD_HASH;
+    loadEnvConfig(dir, true, { info: () => {}, error: () => {} });
+    const loaded = process.env.ADMIN_PASSWORD_HASH ?? "";
+
+    check("the hash survives a .env round trip", loaded === hash,
+      `wrote ${hash.length} chars, read back ${loaded.length}`);
+    check("the round-tripped hash still verifies",
+      await verifyPassword("correct horse battery staple", loaded));
+    check("the hash contains no character a .env loader expands", !hash.includes("$"), hash.slice(0, 24));
+
+    if (before === undefined) delete process.env.ADMIN_PASSWORD_HASH;
+    else process.env.ADMIN_PASSWORD_HASH = before;
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 
   console.log("\nSessions");
 

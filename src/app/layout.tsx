@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Bricolage_Grotesque, Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { Nav } from "@/components/Nav";
+import { isAdmin } from "@/lib/auth";
 import { THEME_BOOTSTRAP } from "@/components/ThemeToggle";
 import "./globals.css";
 
@@ -28,7 +29,9 @@ export const metadata: Metadata = {
     "A personal diary of the films and shows you have watched, and the cinemas you saw them in.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const admin = await isAdmin();
+
   return (
     <html
       lang="en"
@@ -47,7 +50,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         >
           Skip to content
         </a>
-        <Nav />
+        <Nav admin={admin} />
         <main id="main" className="mx-auto w-full max-w-[1440px] px-4 pb-28 sm:px-6 lg:px-10">
           {children}
         </main>

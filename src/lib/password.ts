@@ -4,8 +4,21 @@
  * Node-only, because scrypt is. Nothing that the Edge middleware imports may
  * reach this file: keep it out of `session.ts` and out of `middleware.ts`.
  *
- * Stored form: `scrypt$N$r$p$saltBase64$keyBase64`. The parameters travel with
+ * Stored form: `scrypt:N:r:p:saltBase64:keyBase64`. The parameters travel with
  * the hash, so they can be raised later without invalidating existing hashes.
+ *
+ * The separator is a colon, not the `$` that PHC-style hashes conventionally
+ * use, and that is not cosmetic. This value lives in a .env file, and Next's
+ * env loader performs shell-style variable expansion: a `$` followed by an
+ * identifier is substituted with whatever that variable holds, which is usually
+ * nothing. A `$`-separated hash arrives as rubble:
+ *
+ *   stored  scrypt$32768$8$1$8vfwfWzB...==$kVyxKs7ydJoS...=
+ *   loaded  scrypt==/p6rsYgXGQ=
+ *
+ * Base64 never contains a colon, so this separator is unambiguous and survives
+ * the trip. The old `$` form is still parsed, for a value supplied directly as
+ * a real environment variable where no expansion happens.
  */
 import { randomBytes, scrypt as scryptCb, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
@@ -35,12 +48,12 @@ const OPTIONS = { N, r: R, p: P, maxmem: MAXMEM };
  * cost the same time. Without it, latency distinguishes the two, and sooner or
  * later somebody writes `if (!hash) return true`.
  */
-const DUMMY = "scrypt$32768$8$1$ZHVtbXlzYWx0ZHVtbXlzYWx0$ZHVtbXlrZXlkdW1teWtleWR1bW15a2V5ZHVtbXk=";
+const DUMMY = "scrypt:32768:8:1:ZHVtbXlzYWx0ZHVtbXlzYWx0:ZHVtbXlrZXlkdW1teWtleWR1bW15a2V5ZHVtbXk=";
 
 export async function hashPassword(plain: string): Promise<string> {
   const salt = randomBytes(16);
   const key = await scrypt(plain.normalize("NFKC"), salt, KEYLEN, OPTIONS);
-  return `scrypt$${N}$${R}$${P}$${salt.toString("base64")}$${key.toString("base64")}`;
+  return `scrypt:${N}:${R}:${P}:${salt.toString("base64")}:${key.toString("base64")}`;
 }
 
 /**
@@ -81,7 +94,9 @@ interface Parsed {
 
 function parse(stored: string | undefined): Parsed | null {
   if (!stored) return null;
-  const parts = stored.split("$");
+  // Colons are the current form; `$` is accepted for a value set directly as an
+  // environment variable, where nothing expands it.
+  const parts = stored.includes(":") ? stored.split(":") : stored.split("$");
   if (parts.length !== 6 || parts[0] !== "scrypt") return null;
 
   const [, n, r, p, salt, key] = parts;
