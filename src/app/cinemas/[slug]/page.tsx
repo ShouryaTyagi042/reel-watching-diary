@@ -6,7 +6,7 @@ import { MapLink } from "@/components/CoordPlate";
 import { VenueNameForm } from "@/components/VenueNameForm";
 import { isAdmin } from "@/lib/auth";
 import { getVenueBySlug } from "@/lib/queries";
-import { formatDate, formatDateTime, coordText } from "@/lib/format";
+import { formatDate, formatDateTime, coordText, ratingText } from "@/lib/format";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -100,7 +100,7 @@ export default async function CinemaPage({ params }: { params: Promise<{ slug: s
                   <Link href={`/movies/${m.slug}`} className="text-[14px] text-text transition-colors hover:text-accent">
                     {m.title}
                   </Link>
-                  {m.ratingRaw && <span className="data ml-auto text-[11px] text-accent">{m.ratingRaw}</span>}
+                  {m.ratingValue !== null && <span className="data ml-auto text-[11px] text-accent">{ratingText(m.ratingValue)}</span>}
                 </li>
               ))}
             </ol>

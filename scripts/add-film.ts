@@ -15,11 +15,12 @@
  * Options:
  *   --year N            override the release year
  *   --status S          Watched (default) | Watching | To Watch
- *   --rating N          0 to 5 in half steps; omitted means unrated
+ *   --rating N          1 to 10 in whole steps; omitted means unrated
  *   --watched-on DATE   ISO date the entry is logged under
  *   --cinema            record it as a cinema visit
  *   --cast N            how many cast to take from Wikidata (default 5)
  *   --cast-names "A,B"  use exactly these cast, ignoring Wikidata's order
+ *   --directors "A,B"   use exactly these directors, for films Wikidata lacks
  *   --no-roles          skip the character lookup
  *   --genres "A,B"      override the genre mapping
  *   --page "Title"      use this exact Wikipedia page, skipping the search
@@ -312,7 +313,8 @@ async function run() {
   const genreIds = idsOf(claims, "P136");
   const lookup = await labels([...directorIds, ...castIds, ...genreIds]);
 
-  const directors = directorIds.map((id) => lookup.get(id)).filter((v): v is string => !!v);
+  const directors = opt("directors")?.split(",").map((x) => x.trim()).filter(Boolean)
+    ?? directorIds.map((id) => lookup.get(id)).filter((v): v is string => !!v);
 
   // Wikidata's cast order is not billing order, so a lead can sit below a bit
   // part and fall outside the limit. Report the truncation, and let the caller

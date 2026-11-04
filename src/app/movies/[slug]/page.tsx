@@ -12,7 +12,7 @@ import { ShotUpload } from "@/components/ShotUpload";
 import { CinemaPicker } from "@/components/CinemaPicker";
 import { getMovieBySlug, getFilterOptions, getKnownVenues } from "@/lib/queries";
 import { isAdmin } from "@/lib/auth";
-import { formatDate, formatDateTime } from "@/lib/format";
+import { formatDate, formatDateTime, ratingText } from "@/lib/format";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -70,9 +70,9 @@ export default async function MoviePage({ params }: { params: Promise<{ slug: st
 
           <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3">
             <Stars value={movie.ratingValue} raw={movie.ratingRaw} size="md" />
-            {movie.ratingRaw && (
-              <span className="data text-[11px] text-faint" title="As recorded">
-                {movie.ratingRaw}
+            {movie.ratingValue !== null && (
+              <span className="data text-[13px] text-text">
+                {ratingText(movie.ratingValue)}
               </span>
             )}
           </div>

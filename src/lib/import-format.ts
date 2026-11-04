@@ -67,10 +67,10 @@ export function safeDecode(s: string): string {
 }
 
 /**
- * Convert a star-rating string to a 0–5 number.
+ * Convert a star-rating string to a score out of 10.
  *
- * The tracker uses `★` = 1, `½` = 0.5 and `✰` (hollow star) = 0, e.g.
- * "★★★½✰" → 3.5. Returns null for empty/unparseable values rather than 0, so
+ * The tracker uses `★` = 1, `½` = 0.5 and `✰` (hollow star) = 0 on a scale of
+ * five, doubled onto the diary's scale of ten, e.g. "★★★½✰" → 7. Returns null for empty/unparseable values rather than 0, so
  * "unrated" is never confused with "rated zero".
  */
 export function parseRating(raw: string | undefined | null): number | null {
@@ -81,11 +81,11 @@ export function parseRating(raw: string | undefined | null): number | null {
   const half = (trimmed.match(/½/g) ?? []).length;
   const hollow = (trimmed.match(/✰/g) ?? []).length;
   if (full + half + hollow === 0) {
-    // Not the star format — fall back to a plain number if that's what it is.
-    const n = Number(trimmed);
+    // Not the star format: a plain number (or "7/10") is already out of 10.
+    const n = Number(trimmed.replace(/\s*\/\s*10$/, ""));
     return Number.isFinite(n) ? n : null;
   }
-  return full + half * 0.5;
+  return (full + half * 0.5) * 2;
 }
 
 /** Checkbox cells export as the literal strings "Yes" / "No". */

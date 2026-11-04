@@ -57,6 +57,13 @@
       "when": 1789236069322,
       "tag": "0007_cast_roles",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1789236069323,
+      "tag": "0008_rating_out_of_ten",
+      "breakpoints": true
     }
   ]
 }

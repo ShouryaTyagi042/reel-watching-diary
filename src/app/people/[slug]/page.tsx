@@ -40,7 +40,7 @@ export default async function PersonPage({ params }: { params: Promise<{ slug: s
             {[
               directed.length && `${pluralize(directed.length, "film")} directed`,
               acted.length && `${pluralize(acted.length, "appearance")}`,
-              avg !== null && `${avg.toFixed(1)}★ average`,
+              avg !== null && `${avg.toFixed(1)}/10 average`,
             ]
               .filter(Boolean)
               .join(", ") ||

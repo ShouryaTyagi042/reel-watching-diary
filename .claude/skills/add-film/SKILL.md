@@ -45,7 +45,7 @@ it leaves the entry without artwork.
 | `--dry-run` | Resolve and report, write nothing |
 | `--year N` | Override the release year |
 | `--status S` | `Watched` (default), `Watching`, `To Watch` |
-| `--rating N` | 0 to 5 in half steps. Omit unless the user gave one |
+| `--rating N` | 1 to 10 in whole steps. Omit unless the user gave one |
 | `--watched-on DATE` | ISO date to log the entry under |
 | `--cinema` | Record it as a cinema visit |
 | `--cast N` | How many cast to take from Wikidata (default 5) |

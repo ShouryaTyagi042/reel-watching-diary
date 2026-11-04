@@ -4,10 +4,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { PencilSimple, X } from "@phosphor-icons/react";
+import { RatingSlider } from "./RatingSlider";
 
 const FORMATS = ["Movie", "TV Show"];
 const STATUSES = ["Watched", "Watching", "To Watch"];
-const RATINGS = [5, 4.5, 4, 3.5, 3, 2.5, 2, 1.5, 1, 0.5];
 
 export interface EditableEntry {
   slug: string;
@@ -157,14 +157,7 @@ export function EditEntryForm({
             </div>
 
             <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="Rating">
-                <select value={rating} onChange={(e) => setRating(e.target.value)} className={INPUT}>
-                  <option value="" className="bg-bg text-text">Not rated</option>
-                  {RATINGS.map((r) => (
-                    <option key={r} value={r} className="bg-bg text-text">{r} of 5</option>
-                  ))}
-                </select>
-              </Field>
+              <RatingSlider value={rating} onChange={setRating} />
               <Field label="Logged on">
                 <input type="date" value={watchedOn} onChange={(e) => setWatchedOn(e.target.value)} className={INPUT} />
               </Field>

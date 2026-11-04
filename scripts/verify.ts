@@ -95,10 +95,10 @@ const named = all<{ name: string | null; label: string }>("SELECT name, label FR
 console.log(`     ${named.map((v) => v.name ?? `(unnamed) ${v.label}`).join("; ")}`);
 
 console.log("\nValues");
-check("no rating sits outside 0 to 5",
-  count("movies WHERE rating_value IS NOT NULL AND (rating_value < 0 OR rating_value > 5)") === 0);
-check("no rating is stored in half-steps it cannot be",
-  count("movies WHERE rating_value IS NOT NULL AND (rating_value * 2) % 1 != 0") === 0);
+check("no rating sits outside 0 to 10",
+  count("movies WHERE rating_value IS NOT NULL AND (rating_value < 0 OR rating_value > 10)") === 0);
+check("no rating is stored between whole steps",
+  count("movies WHERE rating_value IS NOT NULL AND rating_value % 1 != 0") === 0);
 check("no release year is implausible",
   count("movies WHERE year IS NOT NULL AND (year < 1870 OR year > 2200)") === 0);
 check("status is always a known value",

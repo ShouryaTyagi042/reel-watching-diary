@@ -179,7 +179,7 @@ export function LibraryControls({
 
           <Select label="Rated at least" value={params.get("minRating") ?? ""} onChange={(v) => set("minRating", v)}
             allLabel="Any rating"
-            options={["5", "4.5", "4", "3.5", "3", "2"].map((r) => ({ value: r, label: `${r} stars` }))} />
+            options={["10", "9", "8", "7", "6", "4"].map((r) => ({ value: r, label: `${r}/10` }))} />
 
           <div>
             <span className="label mb-2 block">Released between</span>

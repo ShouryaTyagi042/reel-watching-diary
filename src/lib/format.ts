@@ -1,14 +1,12 @@
 /** Presentation helpers. Shared by server components and client components. */
 
-/** A movie's rating split into the glyphs itself uses. */
-export interface StarParts { full: number; half: boolean; empty: number }
+/** Ratings are whole numbers out of this. */
+export const RATING_MAX = 10;
 
-export function starParts(value: number | null): StarParts | null {
+/** "7/10", or null when unrated. */
+export function ratingText(value: number | null | undefined): string | null {
   if (value === null || value === undefined) return null;
-  const clamped = Math.max(0, Math.min(5, value));
-  const full = Math.floor(clamped);
-  const half = clamped - full >= 0.5;
-  return { full, half, empty: 5 - full - (half ? 1 : 0) };
+  return `${Number.isInteger(value) ? value : value.toFixed(1)}/${RATING_MAX}`;
 }
 
 const DATE_FMT = new Intl.DateTimeFormat("en-GB", {

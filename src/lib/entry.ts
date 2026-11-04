@@ -77,7 +77,7 @@ export interface NewEntryInput {
   year?: string | number | null;
   format?: string | null;
   status?: string | null;
-  /** 0–5 in half steps. Stored both as the number and in the tracker's star notation. */
+  /** 1–10 in whole steps. Stored both as the number and as "N/10". */
   rating?: string | number | null;
   seriesName?: string | null;
   watchedInTheatre?: boolean;
@@ -91,11 +91,19 @@ export interface NewEntryInput {
 const FORMATS = ["Movie", "TV Show"];
 const STATUSES = ["Watched", "Watching", "To Watch"];
 
-/** Render a 0–5 number in the same star notation the diary uses. */
-export function toStarString(value: number): string {
-  const full = Math.floor(value);
-  const half = value - full >= 0.5;
-  return "★".repeat(full) + (half ? "½" : "") + "✰".repeat(5 - full - (half ? 1 : 0));
+/** The notation a rating set in the app is recorded in, e.g. "7/10". */
+export function toRatingString(value: number): string {
+  return `${value}/10`;
+}
+
+/** Parse and validate a rating from a form or the CLI. Blank means unrated. */
+function readRating(input: string | number | null | undefined): number | null {
+  if (input === undefined || input === null || `${input}`.trim() === "") return null;
+  const value = Number(input);
+  if (!Number.isInteger(value) || value < 1 || value > 10) {
+    throw new ValidationError("Rating must be a whole number from 1 to 10.");
+  }
+  return value;
 }
 
 export function createEntry(db: DiaryDb, input: NewEntryInput) {
@@ -120,15 +128,8 @@ export function createEntry(db: DiaryDb, input: NewEntryInput) {
     }
   }
 
-  let ratingValue: number | null = null;
-  let ratingRaw: string | null = null;
-  if (input.rating !== undefined && input.rating !== null && `${input.rating}`.trim() !== "") {
-    ratingValue = Number(input.rating);
-    if (!Number.isFinite(ratingValue) || ratingValue < 0 || ratingValue > 5 || (ratingValue * 2) % 1 !== 0) {
-      throw new ValidationError("Rating must be between 0 and 5, in half-star steps.");
-    }
-    ratingRaw = toStarString(ratingValue);
-  }
+  const ratingValue = readRating(input.rating);
+  const ratingRaw = ratingValue === null ? null : toRatingString(ratingValue);
 
   let watchedOn: string | null = null;
   if (input.watchedOn?.trim()) {
@@ -339,16 +340,10 @@ export function updateEntry(db: DiaryDb, slug: string, patch: EntryPatch) {
   }
 
   if (patch.rating !== undefined) {
-    let value: number | null = null;
-    if (patch.rating !== null && `${patch.rating}`.trim() !== "") {
-      value = Number(patch.rating);
-      if (!Number.isFinite(value) || value < 0 || value > 5 || (value * 2) % 1 !== 0) {
-        throw new ValidationError("Rating must be between 0 and 5, in half-star steps.");
-      }
-    }
+    const value = readRating(patch.rating);
     if (value !== movie.ratingValue) {
       set.ratingValue = value;
-      set.ratingRaw = value === null ? null : toStarString(value);
+      set.ratingRaw = value === null ? null : toRatingString(value);
       changed.push("rating");
     }
   }

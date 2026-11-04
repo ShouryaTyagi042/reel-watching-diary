@@ -1,9 +1,9 @@
-import { starParts } from "@/lib/format";
+import { RATING_MAX } from "@/lib/format";
 
 /**
  * Rating meter.
  *
- * A row of bars rather than star glyphs. Bars read at any size, sit naturally
+ * A row of ten bars, one per point. Bars read at any size, sit naturally
  * beside tabular numbers, and carry the accent without adding a second colour.
  * The value itself is announced in text, so the unfilled portion is a track
  * rather than information.
@@ -17,42 +17,30 @@ export function Stars({
   raw?: string | null;
   size?: "sm" | "md" | "lg";
 }) {
-  const parts = starParts(value);
-  if (!parts) return <span className="label text-faint">Unrated</span>;
+  if (value === null || value === undefined) return <span className="label text-faint">Unrated</span>;
 
   const dims = {
-    sm: { w: "w-[5px]", h: "h-2.5", gap: "gap-[3px]" },
-    md: { w: "w-[6px]", h: "h-3.5", gap: "gap-1" },
-    lg: { w: "w-2", h: "h-6", gap: "gap-1.5" },
+    sm: { w: "w-[3px]", h: "h-2.5", gap: "gap-[2px]" },
+    md: { w: "w-[4px]", h: "h-3.5", gap: "gap-[3px]" },
+    lg: { w: "w-[5px]", h: "h-6", gap: "gap-1" },
   }[size];
 
-  const filled = parts.full;
-  const half = parts.half;
+  const filled = Math.round(Math.max(0, Math.min(RATING_MAX, value)));
+  const label = `${value} of ${RATING_MAX}`;
 
   return (
     <span
- className={`inline-flex items-end ${dims.gap}`}
-      title={raw ? `${raw} (${value} of 5)` : `${value} of 5`}
-      aria-label={`Rated ${value} out of 5`}
+      className={`inline-flex items-end ${dims.gap}`}
+      title={raw && raw !== `${value}/${RATING_MAX}` ? `${label} (recorded as ${raw})` : label}
+      aria-label={`Rated ${value} out of ${RATING_MAX}`}
     >
-      {Array.from({ length: 5 }, (_, i) => {
-        const full = i < filled;
-        const isHalf = half && i === filled;
-        return (
-          <span
-            key={i}
-            aria-hidden
- className={`${dims.w} ${dims.h} relative overflow-hidden bg-line-strong`}
-          >
-            {(full || isHalf) && (
-              <span
- className="absolute inset-x-0 bottom-0 bg-accent"
-                style={{ height: full ? "100%" : "50%" }}
-              />
-            )}
-          </span>
-        );
-      })}
+      {Array.from({ length: RATING_MAX }, (_, i) => (
+        <span
+          key={i}
+          aria-hidden
+          className={`${dims.w} ${dims.h} ${i < filled ? "bg-accent" : "bg-line-strong"}`}
+        />
+      ))}
     </span>
   );
 }

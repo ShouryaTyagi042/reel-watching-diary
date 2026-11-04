@@ -44,9 +44,9 @@ export const movies = sqliteTable(
     /** "Series Name" (text), e.g. "James Bond - Daniel Craig". */
     seriesName: text("series_name"),
 
-    /** "Rating" as written, e.g. "★★★½✰". Preserved verbatim. */
+    /** "Rating" as written: "★★★½✰" from the export (verbatim), "7/10" when set in the app. */
     ratingRaw: text("rating_raw"),
-    /** `ratingRaw` parsed to a 0–5 scale (★=1, ½=0.5, ✰=0). NULL when unrated. */
+    /** Score out of 10 in whole steps (export stars doubled: ★=2, ½=1). NULL when unrated. */
     ratingValue: real("rating_value"),
 
     /** "Theatre" checkbox — Yes means this was watched in a cinema. */

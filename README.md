@@ -106,7 +106,7 @@ them; entries added in the app get an `app_…` id and an `origin` of `"app"`.
 Where a source property has no clean relational equivalent, both forms are kept:
 
 - **Rating** — `rating_raw` keeps `★★★½✰` exactly as written; `rating_value`
-  is the 0–5 number derived from it (★ = 1, ½ = 0.5, ✰ = 0). Unrated stays
+  is the score out of 10 derived from it (★ = 2, ½ = 1, ✰ = 0). Unrated stays
   `NULL`, never `0`.
 - **Cover** — the source tool stores either a file path or a URL in one property, so
   `cover_raw` keeps the original cell, `cover_kind` says which it was, and
@@ -303,7 +303,7 @@ decoration:
 | `rose` | 5.30 | 4.82 |
 | `screen` | 10.56 | 9.62 |
 
-Ratings are announced as text (`Rated 4.5 out of 5`) with the star glyphs marked
+Ratings are announced as text (`Rated 9 out of 10`) with the star glyphs marked
 `aria-hidden`, so the unfilled half of the meter is a visual track rather than
 information. Each page has exactly one `h1`, every image carries alt text, focus
 is visible in the house-light amber, there is a skip link, and

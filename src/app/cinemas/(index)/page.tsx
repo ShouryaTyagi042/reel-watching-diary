@@ -96,7 +96,7 @@ export default async function CinemasPage() {
                           <span className="label">{v.visits === 1 ? "visit" : "visits"}</span>
                           {v.averageRating !== null && (
                             <span className="data ml-auto text-[11px] text-accent">
-                              avg {v.averageRating.toFixed(1)}★
+                              avg {v.averageRating.toFixed(1)}/10
                             </span>
                           )}
                         </div>

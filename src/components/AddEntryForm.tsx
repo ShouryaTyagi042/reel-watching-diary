@@ -3,15 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { thumbnailStem } from "@/lib/thumbnail-name";
+import { RatingSlider } from "./RatingSlider";
 
 const FORMATS = ["Movie", "TV Show"] as const;
 const STATUSES = ["Watched", "Watching", "To Watch"] as const;
 
-/** Half-star steps, shown in the diary's own notation. */
-const RATINGS = [5, 4.5, 4, 3.5, 3, 2.5, 2, 1.5, 1, 0.5].map((v) => ({
-  value: v,
-  label: "★".repeat(Math.floor(v)) + (v % 1 ? "½" : "") + "✰".repeat(5 - Math.ceil(v)),
-}));
 
 export function AddEntryForm({ knownGenres }: { knownGenres: string[] }) {
   const router = useRouter();
@@ -192,16 +188,7 @@ export function AddEntryForm({ knownGenres }: { knownGenres: string[] }) {
         </div>
 
         <div className="grid gap-6 sm:grid-cols-2">
-          <Field label="Rating">
-            <select value={rating} onChange={(e) => setRating(e.target.value)} className={inputCls}>
-              <option value="" className="bg-bg text-text">Not rated</option>
-              {RATINGS.map((r) => (
-                <option key={r.value} value={r.value} className="bg-bg text-text">
-                  {r.label}  ({r.value})
-                </option>
-              ))}
-            </select>
-          </Field>
+          <RatingSlider value={rating} onChange={setRating} />
           <Field label="Watched on" hint="Leave blank to use today">
             <input
               type="date"
