@@ -453,7 +453,8 @@ export function updateEntry(db: DiaryDb, slug: string, patch: EntryPatch) {
     }
   }
 
-  if (changed.length) {
+  // Relation-only edits (cast, genres, directors) leave `set` empty.
+  if (Object.keys(set).length) {
     db.update(s.movies).set(set).where(eq(s.movies.id, movie.id)).run();
   }
 
