@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { MovieGrid } from "@/components/MovieCard";
+import { PosterGallery } from "@/components/PosterGallery";
 import { PosterFlight } from "@/components/PosterFlight";
 import { LibraryControls } from "@/components/LibraryControls";
 import { EmptyDiary } from "@/components/EmptyDiary";
@@ -28,12 +28,14 @@ export default async function LibraryPage({
     sort: first("sort"), page: first("page"),
   };
 
+  const view = first("view") === "carousel" ? "carousel" : "grid";
   const { rows, total, page, pageCount } = getLibrary(filters);
   const options = getFilterOptions();
 
   const pageHref = (n: number) => {
     const p = new URLSearchParams();
     Object.entries(filters).forEach(([k, v]) => { if (v && k !== "page") p.set(k, v); });
+    if (view === "carousel") p.set("view", view);
     if (n > 1) p.set("page", String(n));
     return `/library${p.toString() ? `?${p}` : ""}`;
   };
@@ -67,7 +69,9 @@ export default async function LibraryPage({
       ) : (
         <>
           <PosterFlight>
-            <MovieGrid movies={rows} />
+            <div className="mt-8">
+              <PosterGallery movies={rows} view={view} />
+            </div>
           </PosterFlight>
 
           {pageCount > 1 && (

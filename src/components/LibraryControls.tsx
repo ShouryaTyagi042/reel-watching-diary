@@ -2,7 +2,8 @@
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useCallback, useEffect, useState, useTransition } from "react";
-import { MagnifyingGlass, X, SlidersHorizontal } from "@phosphor-icons/react";
+import { MagnifyingGlass, X, SlidersHorizontal, SquaresFour, Slideshow } from "@phosphor-icons/react";
+import { motion } from "motion/react";
 
 export interface FilterOptions {
   statuses: string[];
@@ -82,8 +83,8 @@ export function LibraryControls({
 
   return (
     <div className="border-b border-line pb-5">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative min-w-0 flex-1 sm:max-w-md">
+      <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+        <div className="relative w-full min-w-0 sm:w-auto sm:flex-1 sm:max-w-md">
           <MagnifyingGlass
             size={15}
             className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint"
@@ -94,7 +95,7 @@ export function LibraryControls({
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search titles, cast, directors…"
             aria-label="Search the library"
- className="w-full border border-line bg-surface py-2.5 pl-9 pr-9 text-sm text-text placeholder:text-faint focus:border-accent focus:outline-none"
+ className="w-full border border-line bg-surface py-2.5 pl-9 pr-9 text-[16px] text-text sm:text-sm placeholder:text-faint focus:border-accent focus:outline-none"
           />
           {q && (
             <button
@@ -112,7 +113,7 @@ export function LibraryControls({
           type="button"
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
- className={`flex items-center gap-2 border px-3.5 py-2.5 text-[13px] transition-colors ${
+ className={`flex h-[40px] shrink-0 items-center gap-2 border px-3.5 text-[13px] transition-colors ${
             activeCount
               ? "border-accent text-accent"
               : "border-line text-dim hover:border-line-strong hover:text-text"
@@ -125,12 +126,12 @@ export function LibraryControls({
           )}
         </button>
 
-        <label className="flex items-center gap-2">
+        <label className="flex min-w-0 flex-1 items-center gap-2 sm:flex-none">
           <span className="sr-only">Sort by</span>
           <select
             value={params.get("sort") ?? "recent"}
             onChange={(e) => set("sort", e.target.value === "recent" ? "" : e.target.value)}
- className="border border-line bg-surface px-3 py-2.5 text-[13px] text-dim focus:border-accent focus:outline-none"
+ className="h-[40px] w-full min-w-0 border border-line bg-surface px-3 text-[16px] text-dim focus:border-accent focus:outline-none sm:w-auto sm:text-[13px]"
           >
             {Object.entries(SORT_LABELS).map(([v, label]) => (
               <option key={v} value={v} className="bg-bg text-text">{label}</option>
@@ -138,13 +139,28 @@ export function LibraryControls({
           </select>
         </label>
 
-        <span className={`data ml-auto text-[11px] ${pending ? "text-accent" : "text-faint"}`} aria-live="polite">
+        <span className={`data ml-auto hidden text-[11px] sm:inline ${pending ? "text-accent" : "text-faint"}`} aria-live="polite">
           {pending ? "filtering…" : `${showing} of ${total}`}
         </span>
+
+        <ViewToggle
+          view={params.get("view") === "carousel" ? "carousel" : "grid"}
+          onChange={(v) => {
+            // Switching view keeps the page; it is the same films, laid out differently.
+            const next = new URLSearchParams(params.toString());
+            if (v === "carousel") next.set("view", v);
+            else next.delete("view");
+            startTransition(() => {
+              router.replace(`${pathname}${next.toString() ? `?${next}` : ""}`, { scroll: false });
+            });
+          }}
+        />
       </div>
 
+      <QuickFilters options={options} params={params} set={set} push={push} />
+
       {open && (
-        <div className="mt-5 grid gap-x-6 gap-y-5 border border-line bg-surface p-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-4 border border-line bg-surface p-4 sm:mt-5 sm:gap-x-6 sm:gap-y-5 sm:p-5 lg:grid-cols-4">
           <Select label="Status" value={params.get("status") ?? ""} onChange={(v) => set("status", v)}
             options={options.statuses.map((s) => ({ value: s, label: s }))} allLabel="Any status" />
 
@@ -181,7 +197,7 @@ export function LibraryControls({
             allLabel="Any rating"
             options={["10", "9", "8", "7", "6", "4"].map((r) => ({ value: r, label: `${r}/10` }))} />
 
-          <div>
+          <div className="col-span-2 sm:col-span-1">
             <span className="label mb-2 block">Released between</span>
             <div className="flex items-center gap-2">
               <input
@@ -191,7 +207,7 @@ export function LibraryControls({
                 onBlur={(e) => set("releaseFrom", e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && set("releaseFrom", e.currentTarget.value)}
                 aria-label="Released from year"
- className="w-full min-w-0 border border-line bg-bg px-2.5 py-2 text-[13px] text-text placeholder:text-faint focus:border-accent focus:outline-none"
+ className="w-full min-w-0 border border-line bg-bg px-2.5 py-2 text-[16px] text-text placeholder:text-faint focus:border-accent focus:outline-none sm:text-[13px]"
               />
               <span className="text-faint">-</span>
               <input
@@ -201,13 +217,13 @@ export function LibraryControls({
                 onBlur={(e) => set("releaseTo", e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && set("releaseTo", e.currentTarget.value)}
                 aria-label="Released to year"
- className="w-full min-w-0 border border-line bg-bg px-2.5 py-2 text-[13px] text-text placeholder:text-faint focus:border-accent focus:outline-none"
+ className="w-full min-w-0 border border-line bg-bg px-2.5 py-2 text-[16px] text-text placeholder:text-faint focus:border-accent focus:outline-none sm:text-[13px]"
               />
             </div>
           </div>
 
           {activeCount > 0 && (
-            <div className="flex items-end lg:col-start-4">
+            <div className="col-span-2 flex items-end sm:col-span-1 lg:col-start-4">
               <button
                 type="button"
                 onClick={() => startTransition(() => router.replace(pathname, { scroll: false }))}
@@ -238,7 +254,7 @@ function Select({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
- className="w-full border border-line bg-bg px-2.5 py-2 text-[13px] text-text focus:border-accent focus:outline-none"
+ className="w-full border border-line bg-bg px-2.5 py-2 text-[16px] text-text focus:border-accent focus:outline-none sm:text-[13px]"
       >
         <option value="" className="bg-bg text-text">{allLabel}</option>
         {options.map((o) => (
@@ -246,5 +262,111 @@ function Select({
         ))}
       </select>
     </label>
+  );
+}
+
+/* ---------------------------------------------------------- view toggle -- */
+
+function ViewToggle({ view, onChange }: { view: "grid" | "carousel"; onChange: (v: "grid" | "carousel") => void }) {
+  const items = [
+    { v: "grid" as const, label: "Grid", Icon: SquaresFour },
+    { v: "carousel" as const, label: "Carousel", Icon: Slideshow },
+  ];
+  return (
+    <div role="radiogroup" aria-label="Layout" className="relative flex shrink-0 border border-line">
+      {items.map(({ v, label, Icon }) => {
+        const on = view === v;
+        return (
+          <button
+            key={v}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            onClick={() => !on && onChange(v)}
+            title={label}
+            className={`relative grid h-[38px] w-10 place-items-center transition-colors ${on ? "text-on-accent" : "text-dim hover:text-text"}`}
+          >
+            {on && (
+              <motion.span
+                layoutId="library-view-pill"
+                className="absolute inset-0 bg-accent"
+                transition={{ type: "spring", stiffness: 500, damping: 38 }}
+              />
+            )}
+            <Icon size={16} weight={on ? "fill" : "regular"} className="relative" />
+            <span className="sr-only">{label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* -------------------------------------------------------- quick filters -- */
+
+/**
+ * The three ways people actually narrow a wall of posters, one tap each:
+ * genre, decade and rating. The full panel still has everything else.
+ */
+function QuickFilters({
+  options, params, set, push,
+}: {
+  options: FilterOptions;
+  params: URLSearchParams | ReturnType<typeof useSearchParams>;
+  set: (key: string, value: string) => void;
+  push: (mutate: (p: URLSearchParams) => void) => void;
+}) {
+  const genre = params.get("genre") ?? "";
+  const from = params.get("releaseFrom") ?? "";
+  const to = params.get("releaseTo") ?? "";
+  const minRating = params.get("minRating") ?? "";
+
+  const decades: number[] = [];
+  if (options.releaseMin !== null && options.releaseMax !== null) {
+    for (let d = Math.floor(options.releaseMax / 10) * 10; d >= Math.floor(options.releaseMin / 10) * 10; d -= 10) {
+      decades.push(d);
+    }
+  }
+
+  const chip = (on: boolean) =>
+    `shrink-0 border px-2.5 py-1 text-[12px] transition-colors ${
+      on ? "border-accent bg-accent text-on-accent" : "border-line text-dim hover:border-line-strong hover:text-text"
+    }`;
+
+  return (
+    <div className="-mx-4 mt-3.5 flex items-center gap-1.5 overflow-x-auto px-4 pb-1 [mask-image:linear-gradient(to_right,black_calc(100%-3rem),transparent)] [scrollbar-width:none] sm:mx-0 sm:mt-4 sm:flex-wrap sm:px-0 sm:[mask-image:none] [&::-webkit-scrollbar]:hidden">
+      {options.genres.slice(0, 8).map((g) => (
+        <button key={g.slug} type="button" aria-pressed={genre === g.slug}
+          onClick={() => set("genre", genre === g.slug ? "" : g.slug)} className={chip(genre === g.slug)}>
+          {g.name}
+        </button>
+      ))}
+
+      <span aria-hidden className="mx-1.5 h-4 w-px shrink-0 bg-line" />
+
+      {decades.map((d) => {
+        const on = from === `${d}` && to === `${d + 9}`;
+        return (
+          <button key={d} type="button" aria-pressed={on} className={chip(on)}
+            onClick={() => push((p) => {
+              if (on) { p.delete("releaseFrom"); p.delete("releaseTo"); }
+              else { p.set("releaseFrom", `${d}`); p.set("releaseTo", `${d + 9}`); }
+            })}>
+            {d}s
+          </button>
+        );
+      })}
+
+      <span aria-hidden className="mx-1.5 h-4 w-px shrink-0 bg-line" />
+
+      {["9", "8", "7"].map((r) => (
+        <button key={r} type="button" aria-pressed={minRating === r}
+          onClick={() => set("minRating", minRating === r ? "" : r)} className={`data ${chip(minRating === r)}`}>
+          {r}+
+        </button>
+      ))}
+      {/* Room to scroll the last chip out from under the fade. */}
+      <span aria-hidden className="w-8 shrink-0 sm:hidden" />
+    </div>
   );
 }
